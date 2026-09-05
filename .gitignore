@@ -1,0 +1,15 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Binarios pesados: se suben a R2, no van al repo
+*.AppImage
+*.tar.gz
+*.tar.zst
