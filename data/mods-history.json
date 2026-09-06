@@ -1,0 +1,88 @@
+[
+  {
+    "date": "2026-09-04",
+    "event": "baseline_servidor_confirmado",
+    "description": "Estado del servidor Skyblock-478ac753 confirmado por 'ls -la' remoto, antes de empezar a trackear cambios. Incluye ya aplicada una tanda previa de actualización manual (FarmersDelight, farmingforblockheads y productivefarming subidos de versión).",
+    "totalMods": 345,
+    "added": [],
+    "removed": [],
+    "updated": []
+  },
+  {
+    "date": "2026-09-05",
+    "event": "sync_cliente_servidor",
+    "description": "Mods agregados en la instancia local desde el baseline. De los 29 nuevos, 7 se identificaron como necesarios en el servidor (gameplay/librerías/optimización de servidor: servercore, adastra, common-storage-lib, resourcefulconfig, smoothchunk, cynosure, estrogen) y se copiaron a Documents/mods-server/ para subir manualmente. Los otros 22 son mods de rendimiento/renderizado puramente del lado cliente (Sodium, Iris, ImmediatelyFast, entity culling, etc.) y no se suben al servidor. Sin mods actualizados ni eliminados en esta tanda.",
+    "totalMods": 374,
+    "added_server": [
+      "servercore-neoforge-1.5.19+1.21.1.jar",
+      "adastra-1.21.1-1.16.24-neoforge.jar",
+      "common-storage-lib-neoforge-1.21.1-0.0.10.jar",
+      "resourcefulconfig-neoforge-1.21-3.0.11.jar",
+      "smoothchunk-1.21-4.1.jar",
+      "cynosure-1.0.2-neoforge-1.21.1.jar",
+      "estrogen-6.0.8+1.21.1-neoforge.jar"
+    ],
+    "added_client_only": [
+      "BadOptimizations-2.4.1-1.21.1.jar",
+      "CreativeCore_NEOFORGE_v2.13.44_mc1.21.1.jar",
+      "FpsReducer2-neoforge-1.21-2.10.jar",
+      "ImmediatelyFast-NeoForge-1.6.13+1.21.1.jar",
+      "ItemPhysic_NEOFORGE_v1.8.13_mc1.21.1.jar.disabled",
+      "Ksyxis-1.4.3.jar",
+      "ScalableLux-0.1.0.1+neoforge.1cb1e91-all.jar",
+      "SmoothBoot-NeoForge+1.21-1.0.0.jar",
+      "drippyloadingscreen_neoforge_3.1.0_MC_1.21.1.jar",
+      "dynamic-fps-3.11.4+minecraft-1.21.0-neoforge.jar",
+      "entityculling-neoforge-1.10.5-mc1.21.1.jar",
+      "flerovium-neoforge-1.21.1-1.1.2-all.jar",
+      "iris-neoforge-1.8.12+mc1.21.1.jar",
+      "lightspeed-1.21.1-1.2.3.jar",
+      "midnightlib-neoforge-1.9.3+1.21.1.jar",
+      "packetfixer-3.3.1-1.20.5-1.21.X-merged.jar",
+      "particle_core-0.3.3+1.21+neoforge.jar",
+      "redirected-neoforge-1.0.0-1.21.1.jar",
+      "rhenium-1.0.0+neo.jar",
+      "saturn-mc1.21.1-0.1.5.jar",
+      "sodium-neoforge-0.6.13+mc1.21.1.jar",
+      "txnilib-neoforge-1.0.24-1.21.1.jar"
+    ],
+    "removed": [],
+    "updated": []
+  },
+  {
+    "date": "2026-09-06",
+    "event": "incidente_sodium_iris",
+    "description": "El usuario actualizó Sodium e Iris manualmente a versiones incompatibles (sodium-neoforge-0.8.13, iris-neoforge-1.8.8) y además apareció sodium-extra-neoforge-0.9.3 (no trackeado). Se restauraron las versiones conocidas y verificadas por hash contra el manifest de R2 (sodium-neoforge-0.6.13+mc1.21.1.jar, iris-neoforge-1.8.12+mc1.21.1.jar). sodium-extra fue removido por el usuario. Sin cambio neto en el set de mods trackeado.",
+    "totalMods": 374,
+    "added_server": [],
+    "added_client_only": [],
+    "removed": [],
+    "updated": []
+  },
+  {
+    "date": "2026-09-06",
+    "event": "actualizacion_388",
+    "description": "14 mods nuevos agregados en el cliente. Clasificados por el campo 'side' declarado en el mods.toml de cada jar (no por nombre): 12 necesarios en el servidor (2 explícitamente side=SERVER -optimización/gestión de entidades-, 10 de gameplay compartido como TaCZ y sus addons, EvilCraft, Mahou Tsukai, Polymorph, etc.), y 2 puramente cliente (chat_heads con side=CLIENT explícito, y gpumemleakfix por ser un fix de renderizado GPU sin sentido en un servidor headless). Copiados a Documents/mods-server/ para subir manualmente. Sin mods eliminados ni actualizados.",
+    "totalMods": 388,
+    "added_server": [
+      "Almanac-1.21.1-2-neoforge-1.5.2.jar",
+      "letmedespawn-1.21.x-neoforge-1.5.0.jar",
+      "BetterF3-11.0.3-NeoForge-1.21.1.jar",
+      "another_furniture-neoforge-4.0.2.jar",
+      "effortlessbuilding-4.2+1.21.1.jar",
+      "evilcraft-1.21.1-neoforge-1.2.95.jar",
+      "gundb-2.2.2-1.21.1.jar",
+      "mahoutsukai-1.21.1-v1.36.27.jar",
+      "polymorph-neoforge-1.1.0+1.21.1.jar",
+      "tacz-neoforge-1.21.1-1.1.8-hotfix-r6.jar",
+      "tacz-tweaks-3.0.0-alpha.10+1.21.1-neoforge.jar",
+      "tacz_x_guns_lights_addon-neoforge-1.21.1-2.8.2.jar"
+    ],
+    "added_client_only": [
+      "chat_heads-0.15.7-neoforge-1.21.jar",
+      "gpumemleakfix-1.21-1.8.jar"
+    ],
+    "removed": [],
+    "updated": []
+  }
+]
