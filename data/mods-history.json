@@ -84,5 +84,25 @@
     ],
     "removed": [],
     "updated": []
+  },
+  {
+    "date": "2026-09-06",
+    "event": "correccion_scalablelux_y_optimizacion_server",
+    "description": "Corrección de clasificación: ScalableLux (reescribe el motor de luz, clientSideOnly=false) estaba mal etiquetado como client_only desde el evento anterior; se reclasificó a server_added — el archivo ya estaba publicado en R2, solo cambió el tracking. Además se investigó en Modrinth qué mods de optimización de servidor faltaban sin ser redundantes con lo ya instalado (Lithium, FerriteCore, ModernFix, ServerCore, Clumps, letmedespawn, novillagerdm): se agregaron Noisium (optimización de worldgen, complementario a Lithium, confirmado no redundante) y Get It Together, Drops! (fusiona ítems dropeados, distinto de Clumps que solo agrupa XP). Se descartaron Krypton (solo Fabric, sin puerto NeoForge) y Fastload (proyecto abandonado, sin soporte NeoForge).",
+    "totalMods": 390,
+    "added_server": [
+      "noisium-neoforge-2.3.0+mc1.21-1.21.1.jar",
+      "getittogetherdrops-neoforge-1.21.5-1.4.jar"
+    ],
+    "added_client_only": [],
+    "reclassified": [
+      {
+        "mod": "ScalableLux-0.1.0.1+neoforge.1cb1e91-all.jar",
+        "from": "client_only",
+        "to": "server_added"
+      }
+    ],
+    "removed": [],
+    "updated": []
   }
 ]

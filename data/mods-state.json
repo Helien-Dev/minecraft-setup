@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-06T18:19:24.000Z",
+  "generatedAt": "2026-09-06T18:29:42.000Z",
   "instance": "all-the-mods-10-to-the-sky-atm10sky",
-  "totalMods": 388,
+  "totalMods": 390,
   "counts": {
     "shared": 345,
-    "server_added": 19,
-    "client_only": 24
+    "server_added": 22,
+    "client_only": 23
   },
   "mods": {
     "AE2-Things-1.4.2-beta.jar": {
@@ -446,7 +446,7 @@
     "ScalableLux-0.1.0.1+neoforge.1cb1e91-all.jar": {
       "sha256": "74340a37af858014ecf66068054bed3ab778b22d24956d348a2ec2bc3c585cb5",
       "size": 176443,
-      "scope": "client_only"
+      "scope": "server_added"
     },
     "Searchables-neoforge-1.21.1-1.0.2.jar": {
       "sha256": "ca193f0c69033d8f709f9e073a7c1ef4ea46714e5c2f94eb23ace12781c6aa68",
@@ -1947,6 +1947,16 @@
       "sha256": "2dc01e57a47c1817794d920f582e061c6a45539936cb20572fac5c9a86599a13",
       "size": 99253,
       "scope": "shared"
+    },
+    "noisium-neoforge-2.3.0+mc1.21-1.21.1.jar": {
+      "sha256": "e95209d593bc00d7c5de94f746ffd1dfbfa70ac8fbe938393ef930d00416109c",
+      "size": 60296,
+      "scope": "server_added"
+    },
+    "getittogetherdrops-neoforge-1.21.5-1.4.jar": {
+      "sha256": "a09466d03e3dde0c0f5c179146a8247b33a720a88979eb813c5f2aa2ad1c7a78",
+      "size": 8825,
+      "scope": "server_added"
     }
   }
 }
