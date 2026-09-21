@@ -13,3 +13,4 @@ wheels/
 *.AppImage
 *.tar.gz
 *.tar.zst
+*.zip

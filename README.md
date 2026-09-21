@@ -1,85 +1,84 @@
 # mine-script
 
-Instalador de un click para que tus amigos terminen con **SKLauncher +
-el modpack ATM10 To the Sky + mods extra** ya instalados, sin tocar nada
-más que el ícono del launcher.
+Instalador de un click para que tus amigos terminen con **SKLauncher + el
+modpack que elijan (con su perfil de gama, si tiene)** ya instalados, sin
+tocar nada más que el ícono del launcher.
 
 ```
-curl -sSL https://TU-DOMINIO/install.sh | sh
+curl -sSL https://TU-DOMINIO/install.sh | sh        # Linux
+irm https://TU-DOMINIO/install.ps1 | iex            # Windows (en desarrollo, ver docs/windows-context.md)
 ```
+
+El script pregunta qué modpack quieres y, si tiene perfiles de gama (alta,
+baja...), cuál. Hay **un solo SKLauncher por máquina**; cada modpack/perfil
+es una instancia dentro de él.
 
 ## Cómo funciona
 
-Los binarios pesados (el AppImage, el modpack) **no viven en este repo** ni
-en el script: se suben a un bucket de Cloudflare R2 y `install.sh` solo
-tiene las URLs. Así el script que corren tus amigos es liviano y rápido de
-descargar.
+Los binarios pesados (launcher, modpacks, mods) **no viven en este repo**: se
+suben a un bucket de Cloudflare R2. Lo único que el script conoce es la URL de
+`catalog.json`, que describe qué hay disponible.
 
 ```
-tú (una sola vez por cambio)              tus amigos (cada uno)
-────────────────────────────              ─────────────────────
-scripts/package-instance.sh   →   R2
-        │                              ├─ atm10sky-instance.tar.gz (completo)
-        ├── genera .tar.gz             ├─ atm10sky/manifest.json (hash de c/mod)
-        ├── genera manifest.json       └─ atm10sky/mods/<cada-mod>.jar
-        └── publica todo con rclone           │
-                                               ▼
-                                     curl install.sh | sh
-                                               │
-                    ┌──────────────────────────┼──────────────────────────┐
-                    ▼                          ▼                          ▼
-            instala AppImage           entrada en el menú          ¿primera vez?
-            (~/.local/share/           de aplicaciones             ├─ sí: baja el .tar.gz completo
-             sklauncher/)              (~/.local/share/            └─ no: compara manifest.json local
-                                        applications/)                 vs remoto, baja/borra SOLO
-                                                                        los mods que cambiaron
-                                                                                │
-                                                                                ▼
-                                                            se registra en instances.json
-                                                            para que aparezca en SKLauncher
+R2 (minecraft-data)
+├─ catalog.json                       <- modpacks, perfiles, versiones, rutas (este repo: catalog.json)
+├─ SKlauncher-4.0.46-x86_64.AppImage  <- launcher Linux
+├─ sk-portable.zip                    <- launcher Windows (carpeta completa, sin data\)
+├─ atm10sky-instance.tar.gz           <- un .tar.gz por perfil (instalación nueva)
+├─ atm10sky/manifest.json             <- un manifest por perfil (hash de cada mod)
+├─ atm10sky/mods/*.jar                <- los mods, una sola vez por modpack
+└─ neofresh/{high,low}/{instance.tar.gz,manifest.json}, neofresh/mods/*.jar
 ```
 
-**Actualizaciones incrementales:** la primera vez que un amigo corre el
-script, se baja el modpack completo. Cada vez después de esa, `install.sh`
-descarga un `manifest.json` chiquito (nombre + hash de cada mod), lo
-compara contra el estado que guardó la última vez
-(`~/.local/share/sklauncher/state/<instancia>.json`), y baja/borra
-**únicamente** los mods que cambiaron — nunca vuelve a bajar el `.tar.gz`
-completo salvo que sea una instalación nueva. Si no cambió nada, el script
-lo detecta y no descarga absolutamente nada de mods.
+Agregar un modpack nuevo = empaquetarlo, subirlo y añadir una entrada a
+`catalog.json`. Los scripts de instalación no cambian.
 
-## 1. Empaquetar y publicar (cada vez que cambies mods)
+**Nombres de instancia.** La primera vez, el modpack se llama solo por su
+nombre (`NeoFresh`). Si después instalas **otro perfil** del mismo modpack, la
+instancia nueva lleva el perfil en el nombre (`NeoFresh Gama Baja`) y la
+primera no se toca. Correr de nuevo con el mismo perfil actualiza esa
+instancia en sitio. El script recuerda qué perfil tiene cada instancia en
+`~/.local/share/sklauncher/state/<id>.json`.
+
+**Actualizaciones incrementales.** La primera vez se baja el `.tar.gz` del
+perfil. Después, el script solo compara el `manifest.json` y baja/borra los
+mods que cambiaron. Si no cambió nada, no descarga nada de mods. Tampoco
+vuelve a bajar el launcher si ya tiene la versión del catálogo.
+
+> Hoy solo `mods/` se actualiza de forma incremental. Los cambios en
+> `config/`, `kubejs/`, etc. solo llegan en la instalación inicial.
+
+## 1. Empaquetar y publicar un perfil
 
 ```bash
-./scripts/package-instance.sh
+./scripts/package-instance.sh <modpack-id> <perfil-id>
+# ej.: INSTANCE_DIR=~/Downloads/Neo-lowprofile/NeoLowProfile ./scripts/package-instance.sh neofresh low
 ```
 
-Por defecto toma `~/.sklauncher/instances/all-the-mods-10-to-the-sky-atm10sky`,
-excluye lo personal (`saves/`, `screenshots/`, `logs/`, `crash-reports/`,
-`servers.dat`, cachés que se regeneran solas), y genera en `dist/`:
-- el `.tar.gz` completo de la instancia
-- `manifest.json` (hash + tamaño de cada mod)
+Los ids salen de `catalog.json`. Por defecto toma
+`~/.sklauncher/instances/<modpack-id>`; usa `INSTANCE_DIR` para otra carpeta.
+Excluye lo personal (`saves/`, `screenshots/`, `logs/`, `journeymap/`,
+`usercache.json`, cachés...) y deja en `dist/` los archivos con la misma ruta
+que tendrán en R2.
 
-Si tenés un remote de `rclone` llamado `r2` configurado (ver más abajo),
-**publica todo automáticamente**: el `.tar.gz`, el `manifest.json`, y cada
-mod como objeto individual en R2 (sincronizado con `rclone sync`, así solo
-sube lo que cambió). Si no querés que publique solo, usá `SKIP_UPLOAD=1`.
+Si tienes un remote de `rclone` llamado `r2` (ver paso 2), **publica solo**: el
+`.tar.gz`, el `manifest.json` y los mods nuevos (`rclone copy`, no `sync`: los
+perfiles de un mismo modpack comparten `mods/`). Usa `SKIP_UPLOAD=1` para no
+publicar. `EXTRA_MODS_DIR=<carpeta>` copia `.jar` extra a `mods/` antes de
+empaquetar.
 
-Para meterle mods extra que no vienen en el modpack de CurseForge, dejalos
-en una carpeta y pasala por variable de entorno — se copian a `mods/`
-antes de empaquetar/publicar:
+Después de publicar los perfiles, **publica el catálogo** (aparte, para no listar
+un perfil que todavía no subiste):
 
 ```bash
-EXTRA_MODS_DIR=~/mods-extra ./scripts/package-instance.sh
+rclone copyto catalog.json r2:minecraft-data/catalog.json --s3-no-check-bucket
 ```
 
-Para empaquetar otra instancia, o publicar a otro prefijo/bucket:
+Launcher de Windows (contenido de `sk-portable/` en la raíz del zip, **sin** `data\`):
 
 ```bash
-INSTANCE_DIR=~/.sklauncher/instances/all-the-mods-10-atm10 \
-OUT=dist/atm10.tar.gz \
-R2_PREFIX=atm10 \
-  ./scripts/package-instance.sh
+(cd ~/Downloads/Neo-lowprofile/sk-portable && zip -r /tmp/sk-portable.zip . -x 'data/*')
+rclone copyto /tmp/sk-portable.zip r2:minecraft-data/sk-portable.zip --s3-no-check-bucket
 ```
 
 ## 2. Configurar `rclone` (una vez)
@@ -88,65 +87,44 @@ R2_PREFIX=atm10 \
 sudo dnf install -y rclone   # o el gestor de paquetes de tu distro
 rclone config                # remote nuevo, nombre "r2", tipo s3, provider Cloudflare
 ```
-Necesitás el Access Key ID, Secret Access Key y endpoint de un token de API
+Necesitas el Access Key ID, Secret Access Key y endpoint de un token de API
 de R2 (Cloudflare dashboard → R2 → Gestionar tokens de API).
 
-## 3. Configurar `install.sh` (una vez)
+## 3. Publicar `install.sh`
 
-Editá el bloque de configuración al inicio de `install.sh` con las URLs
-reales de tu bucket:
+Sube `install.sh` a GitHub Pages (o cualquier hosting estático). Solo este
+archivo necesita ser público y liviano. Si tu bucket no es
+`minecraft-data.alvaroavila.dev`, cambia `CATALOG_URL` al inicio del script.
 
-```sh
-SKLAUNCHER_URL="https://<tu-dominio>/SKlauncher-4.0.46-x86_64.AppImage"
-MODPACK_URL="https://<tu-dominio>/atm10sky-instance.tar.gz"
-MANIFEST_URL="https://<tu-dominio>/atm10sky/manifest.json"
-MOD_BASE_URL="https://<tu-dominio>/atm10sky/mods"
-```
-
-El script se niega a correr si detecta que quedaron las URLs de ejemplo
-(`TU-BUCKET`), así no se te escapa sin configurar.
-
-También podés pisar esos valores sin tocar el archivo, por variable de
-entorno (útil para probar antes de publicar):
+Para probar antes de publicar, sirve una copia del layout de R2 y apunta a ella:
 
 ```bash
-SKLAUNCHER_URL=file:///ruta/local/SKlauncher.AppImage \
-MODPACK_URL=file:///ruta/local/instance.tar.gz \
-  sh install.sh
+CATALOG_URL=file:///ruta/local/catalog.json sh install.sh
 ```
 
-## 4. Publicar `install.sh`
-
-Subí `install.sh` a GitHub Pages (o cualquier hosting estático) en la raíz,
-para que quede accesible como `https://tu-usuario.github.io/tu-repo/install.sh`
-o en tu dominio propio. Solo este archivo necesita ser público y liviano;
-los archivos pesados quedan en R2.
-
-## 5. Lo que corren tus amigos
+## 4. Lo que corren tus amigos
 
 ```bash
 curl -sSL https://TU-DOMINIO/install.sh | sh
 ```
 
-Al terminar: abren SKLauncher desde el menú de aplicaciones, inician
-sesión y la instancia **"ATM10 To the Sky"** ya está ahí, con todos los
-mods (incluidos los extra) listos para jugar.
+Eligen modpack y perfil, abren SKLauncher desde el menú de aplicaciones,
+inician sesión y la instancia ya está ahí. Sin menú (o sin terminal):
 
-Re-correr el script después de que agregues/actualices mods (paso 1) les
-baja solo lo que cambió — no vuelve a descargar el paquete completo, y
-nunca toca las partidas guardadas de cada uno.
+```bash
+curl -sSL https://TU-DOMINIO/install.sh | MODPACK=neofresh PROFILE=low sh
+```
+
+Re-correr el script después de que agregues/actualices mods les baja solo lo
+que cambió, y nunca toca las partidas guardadas de cada uno.
 
 ### Notas
 
-- Solo soporta Linux x86_64 (SKLauncher se distribuye como AppImage).
-- Los AppImage necesitan FUSE para ejecutarse; `install.sh` avisa si no lo
-  detecta e indica el paquete a instalar según la distro
-  (`libfuse2`/`fuse-libs`/`fuse2`).
-- Requisitos en la máquina del amigo: `curl`, `tar` y `python3` (presentes
-  por defecto en casi toda distro de escritorio). `python3` se usa tanto
-  para fusionar la instancia en `instances.json` como para la lógica de
-  actualización incremental de mods.
-- El estado de "qué mods tengo instalados" vive en
-  `~/.local/share/sklauncher/state/<id>.json` en la máquina del amigo. Si
-  se borra ese archivo (o la carpeta `mods/`), el script vuelve a hacer
-  una instalación completa desde cero la próxima vez, sin romper nada.
+- Linux x86_64 (SKLauncher se distribuye como AppImage). Windows: ver
+  `docs/windows-context.md`.
+- Los AppImage necesitan FUSE; `install.sh` avisa si no lo detecta.
+- Requisitos en la máquina del amigo: `curl`, `tar` y `python3`.
+- Si se borra `~/.local/share/sklauncher/state/<id>.json` (o la carpeta
+  `mods/` de la instancia), el script hace una instalación completa de ese
+  perfil la próxima vez, sin romper nada.
+- `data/` lleva el seguimiento manual del estado de los mods (ver `data/README.md`).
