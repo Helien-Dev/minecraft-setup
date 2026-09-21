@@ -34,3 +34,11 @@ Por ahora es manual: cuando agregues/actualices mods en la instancia local
 y decidas qué va al servidor, agregá una entrada nueva a
 `mods-history.json` con la fecha y las listas correspondientes, y
 regenerá `mods-state.json` reclasificando los mods nuevos.
+
+## `neofresh-profiles.json`
+
+Qué mods de NeoFresh lleva cada perfil y por qué. La gama baja es un
+subconjunto de la alta: debe tener todo mod que corra en servidor o en ambos
+lados, para no crear discrepancias, y los de cliente puro no son obligatorios.
+Cuando agregues mods a la alta, revísalos contra esa regla (Modrinth
+`client_side`/`server_side`) y actualiza este archivo.

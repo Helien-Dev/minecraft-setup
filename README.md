@@ -5,8 +5,8 @@ modpack que elijan (con su perfil de gama, si tiene)** ya instalados, sin
 tocar nada más que el ícono del launcher.
 
 ```
-curl -sSL https://TU-DOMINIO/install.sh | sh        # Linux
-irm https://TU-DOMINIO/install.ps1 | iex            # Windows (en desarrollo, ver docs/windows-context.md)
+curl -sSL https://minecraft-data.alvaroavila.dev/install.sh | sh        # Linux
+irm https://minecraft-data.alvaroavila.dev/install.ps1 | iex            # Windows (PowerShell)
 ```
 
 El script pregunta qué modpack quieres y, si tiene perfiles de gama (alta,
@@ -38,7 +38,7 @@ nombre (`NeoFresh`). Si después instalas **otro perfil** del mismo modpack, la
 instancia nueva lleva el perfil en el nombre (`NeoFresh Gama Baja`) y la
 primera no se toca. Correr de nuevo con el mismo perfil actualiza esa
 instancia en sitio. El script recuerda qué perfil tiene cada instancia en
-`~/.local/share/sklauncher/state/<id>.json`.
+`~/.local/share/sklauncher/state/<id>.json` (en Windows, `%LOCALAPPDATA%\Programs\SKLauncher-Portable\state\<id>.json`).
 
 **Actualizaciones incrementales.** La primera vez se baja el `.tar.gz` del
 perfil. Después, el script solo compara el `manifest.json` y baja/borra los
@@ -81,6 +81,11 @@ Launcher de Windows (contenido de `sk-portable/` en la raíz del zip, **sin** `d
 rclone copyto /tmp/sk-portable.zip r2:minecraft-data/sk-portable.zip --s3-no-check-bucket
 ```
 
+Si cambias el zip, sube también `launcher.windows.version` en `catalog.json`: esa versión es la
+que decide si los amigos vuelven a bajar el launcher. Las pruebas de Windows se hicieron con un
+zip armado en Windows (`tar.exe -a`, ver `scripts/windows/make-test-layout.ps1`); uno hecho con
+`zip` en Linux debería extraerse igual, pero pruébalo una vez antes de repartir.
+
 ## 2. Configurar `rclone` (una vez)
 
 ```bash
@@ -90,11 +95,18 @@ rclone config                # remote nuevo, nombre "r2", tipo s3, provider Clou
 Necesitas el Access Key ID, Secret Access Key y endpoint de un token de API
 de R2 (Cloudflare dashboard → R2 → Gestionar tokens de API).
 
-## 3. Publicar `install.sh`
+## 3. Publicar `install.sh` e `install.ps1`
 
-Sube `install.sh` a GitHub Pages (o cualquier hosting estático). Solo este
-archivo necesita ser público y liviano. Si tu bucket no es
-`minecraft-data.alvaroavila.dev`, cambia `CATALOG_URL` al inicio del script.
+Los dos instaladores se sirven desde el propio bucket, en el mismo dominio que el catálogo
+(`https://minecraft-data.alvaroavila.dev/`), con UTF-8 explícito (sin el charset, `irm` rompe los acentos
+de `install.ps1`). Si cambias uno, vuelve a subirlo:
+
+```bash
+rclone copyto install.sh  r2:minecraft-data/install.sh  --s3-no-check-bucket --header-upload "Content-Type: text/plain; charset=utf-8"
+rclone copyto install.ps1 r2:minecraft-data/install.ps1 --s3-no-check-bucket --header-upload "Content-Type: text/plain; charset=utf-8"
+```
+
+Si tu bucket no es `minecraft-data.alvaroavila.dev`, cambia `CATALOG_URL` al inicio de ambos scripts.
 
 Para probar antes de publicar, sirve una copia del layout de R2 y apunta a ella:
 
@@ -102,28 +114,51 @@ Para probar antes de publicar, sirve una copia del layout de R2 y apunta a ella:
 CATALOG_URL=file:///ruta/local/catalog.json sh install.sh
 ```
 
+`install.ps1` debe ir **sin BOM** (con BOM, `irm | iex` falla). Después comprueba que llega bien (desde PowerShell; debe dar `True`):
+
+```powershell
+(irm https://minecraft-data.alvaroavila.dev/install.ps1) -match 'catálogo'
+```
+
 ## 4. Lo que corren tus amigos
 
 ```bash
-curl -sSL https://TU-DOMINIO/install.sh | sh
+curl -sSL https://minecraft-data.alvaroavila.dev/install.sh | sh
 ```
 
 Eligen modpack y perfil, abren SKLauncher desde el menú de aplicaciones,
 inician sesión y la instancia ya está ahí. Sin menú (o sin terminal):
 
 ```bash
-curl -sSL https://TU-DOMINIO/install.sh | MODPACK=neofresh PROFILE=low sh
+curl -sSL https://minecraft-data.alvaroavila.dev/install.sh | MODPACK=neofresh PROFILE=low sh
 ```
+
+En Windows (PowerShell 5.1 o superior, sin permisos de administrador):
+
+```powershell
+irm https://minecraft-data.alvaroavila.dev/install.ps1 | iex
+```
+
+Instala un SKLauncher **portable** en `%LOCALAPPDATA%\Programs\SKLauncher-Portable` y crea el
+acceso "SKLauncher Portable" en el Menú Inicio (no toca un SKLauncher oficial que ya tengan). Sin
+menú: `$env:MODPACK='neofresh'; $env:PROFILE='low'; irm https://minecraft-data.alvaroavila.dev/install.ps1 | iex`
+(esas variables quedan definidas en esa terminal; bórralas con
+`Remove-Item Env:MODPACK,Env:PROFILE` si vas a correrlo de nuevo).
 
 Re-correr el script después de que agregues/actualices mods les baja solo lo
 que cambió, y nunca toca las partidas guardadas de cada uno.
 
 ### Notas
 
-- Linux x86_64 (SKLauncher se distribuye como AppImage). Windows: ver
-  `docs/windows-context.md`.
+- Linux x86_64 (AppImage) y Windows 10 (1803 o posterior) / 11 con PowerShell 5.1. Detalles,
+  hechos verificados y límites de lo probado en Windows: `docs/windows-findings.md`.
+- En Windows, la primera vez que juegan una instancia SKLauncher descarga ~1,1 GB (Minecraft,
+  NeoForge y Java): necesitan internet y espacio libre.
+- La gama alta tiene rutas de hasta 252 caracteres (con un usuario de 20): si el usuario de
+  Windows es muy largo y no tiene las rutas largas activadas, `install.ps1` aborta con un mensaje
+  claro antes de extraer.
 - Los AppImage necesitan FUSE; `install.sh` avisa si no lo detecta.
-- Requisitos en la máquina del amigo: `curl`, `tar` y `python3`.
+- Requisitos en Linux: `curl`, `tar` y `python3`. En Windows no hace falta instalar nada (usa `curl.exe` y `tar.exe` que trae el sistema).
 - Si se borra `~/.local/share/sklauncher/state/<id>.json` (o la carpeta
   `mods/` de la instancia), el script hace una instalación completa de ese
   perfil la próxima vez, sin romper nada.

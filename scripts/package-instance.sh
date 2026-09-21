@@ -182,15 +182,18 @@ fi
 
 echo
 echo "☁️  Publicando a R2 ($R2_REMOTE:$R2_BUCKET)..."
-echo "  -> $TAR_KEY"
-rclone copyto "$OUT" "$R2_REMOTE:$R2_BUCKET/$TAR_KEY" --s3-no-check-bucket
-echo "  -> $MANIFEST_KEY"
-rclone copyto "$MANIFEST_OUT" "$R2_REMOTE:$R2_BUCKET/$MANIFEST_KEY" --s3-no-check-bucket
+# Orden: primero lo que el manifest referencia (mods, tar) y el manifest AL FINAL. Es lo que
+# "publica" el cambio: quien actualice a mitad de la subida sigue viendo el manifest viejo
+# (consistente) en vez de uno que apunta a mods que todavía no existen.
 # copy, NO sync: los perfiles del mismo modpack comparten esta carpeta, y sync
 # borraría los mods que el perfil actual no tiene (p. ej. los extra de gama alta).
 # ponytail: los .jar viejos quedan huérfanos en R2; limpiar a mano con la unión de manifests si pesa.
 echo "  -> $PREFIX/mods/ (solo sube lo nuevo/cambiado)"
 rclone copy "$STAGE/mods" "$R2_REMOTE:$R2_BUCKET/$PREFIX/mods" --s3-no-check-bucket --progress
+echo "  -> $TAR_KEY"
+rclone copyto "$OUT" "$R2_REMOTE:$R2_BUCKET/$TAR_KEY" --s3-no-check-bucket
+echo "  -> $MANIFEST_KEY"
+rclone copyto "$MANIFEST_OUT" "$R2_REMOTE:$R2_BUCKET/$MANIFEST_KEY" --s3-no-check-bucket
 
 echo
 echo "✅ Publicado. Los amigos que ya instalaron este perfil solo necesitan volver a"
