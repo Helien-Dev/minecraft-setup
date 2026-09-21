@@ -170,8 +170,10 @@ INSTANCE_DIR="$SKL_DIR/instances/$INSTANCE_ID"
 LOCAL_MANIFEST="$STATE_DIR/$INSTANCE_ID.json"
 ok "Instalando: $INSTANCE_NAME"
 
+# SKLauncher reescribe instances.json completo mientras está abierto y pisa los cambios
+# externos (verificado en Windows): registrar la instancia con el launcher abierto se pierde.
 if [ -f "$BIN_PATH" ] && pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
-  warn "SKLauncher está abierto. Ciérralo y vuelve a abrirlo al terminar para que vea la instancia."
+  die "SKLauncher está abierto. Ciérralo (también en la bandeja del sistema) y vuelve a ejecutar el script."
 fi
 
 # --- 2) SKLauncher (global: una sola vez por máquina) ---
@@ -367,7 +369,9 @@ if old:
             merged[k] = old[k]
     data["instances"][data["instances"].index(old)] = merged
 else:
-    new["createdAt"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    # Sin playTime el launcher escribe null tras la primera sesión.
+    new.update(playTime=0, sessionCount=0, customLaunchHooks=False,
+               createdAt=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
     data["instances"].append(new)
 
 if os.path.exists(path):
@@ -381,3 +385,4 @@ ok "Instancia \"$INSTANCE_NAME\" registrada."
 echo
 ok "¡Listo! Abre SKLauncher desde el menú de aplicaciones, inicia sesión y"
 ok "selecciona la instancia \"$INSTANCE_NAME\"."
+warn "La primera vez que la juegues, SKLauncher puede descargar Minecraft, NeoForge y Java (~1 GB): necesitas internet."

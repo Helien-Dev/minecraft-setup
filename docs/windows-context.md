@@ -255,3 +255,24 @@ la carpeta `data\` al repo.
   actualizaciones: hoy solo se actualizan los mods (igual que en Linux). Haría falta un
   paquete "overlay" con hash en el manifest; se decide cuando el dueño lo necesite.
 - Entrada de desinstalación en Configuración > Aplicaciones (HKCU) y `uninstall.ps1`.
+
+## 8. Ajustes tras la Fase 1 (cruce con Linux)
+
+La Fase 1 quedó aprobada; no hay cambios de diseño. Para las Fases 2 a 4:
+
+- **Se aceptan** todas las implicaciones de `docs/windows-findings.md` ("Implicaciones para
+  `install.ps1`"), incluido `type: custom`, `tar.exe` de `%SystemRoot%\System32`, JSON UTF-8 sin BOM y
+  el nombre `SKLauncher Portable.lnk`.
+- **Launcher abierto = abortar** (no solo avisar), antes de descargar o tocar nada, con un mensaje que
+  mencione la bandeja del sistema. `install.sh` ya hace lo mismo. Solo cuenta el `sklauncher.exe` cuyo
+  `ExecutablePath` está dentro de `<launcher>`.
+- **Instancia nueva** = `playTime: 0`, `sessionCount: 0`, `customLaunchHooks: false` (Linux ya lo hace).
+  Al re-registrar una existente NO reiniciar esos campos: se conserva lo del launcher.
+- **Rutas largas (riesgo real en la gama alta).** Con un usuario de 20 caracteres, el archivo más largo
+  del perfil alto mide 252 caracteres (límite 260); con un usuario de ~28+ ya se pasa. El culpable es
+  `shaderpacks\ComplementaryReimagined_r5.9.3 + EuphoriaPatches_1.10.5\shaders\...`. La gama baja llega
+  a 202. Antes de extraer, `install.ps1` debe calcular `longitud de la ruta destino + ruta más larga del
+  tar` (`tar -tf`) y, si es >= 260 y `LongPathsEnabled` no está activo
+  (`HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem`), abortar con un mensaje claro en vez de dejar una
+  extracción a medias. Incluye esto en la prueba 5 de la Fase 3 (usuario con nombre largo).
+- **Primer Jugar** descarga ~1,1 GB (ya lo documentaste): avisa al final, como hace `install.sh`.
