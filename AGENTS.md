@@ -54,3 +54,5 @@ qué hay publicado. Todo cambio de comportamiento se aplica a **ambos** instalad
 - Si un mod excluido cambia de versión en el standard, el exclude se actualiza en la misma publicación.
 - Mods prohibidos: `banned` (por `modId`) en el modpack de `catalog.json`. `publish.py` se niega a publicar si alguno
   aparece, aunque el jar se llame distinto.
+- Los instaladores **nunca** reemplazan un archivo de `config/` que el jugador ya tenga (ni `options.txt` ni
+  `servers.dat`): solo agregan los nuevos. Decisión del usuario, para que nadie tenga que reconfigurar.
