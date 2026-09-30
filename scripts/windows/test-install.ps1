@@ -29,7 +29,7 @@ function Log-Since($n) { if (Test-Path $Log) { @(Get-Content $Log | Select-Objec
 function Install($base, $vars = @{}, $stdin = $null) {
   New-Item -ItemType Directory -Force -Path "$base\Local", "$base\Roaming" | Out-Null
   $env = @{ LOCALAPPDATA = "$base\Local"; APPDATA = "$base\Roaming"; USERPROFILE = $base; CATALOG_URL = $Url
-            MODPACK = $null; PROFILE = $null; MEMORY_MAX = $null; DESKTOP_SHORTCUT = $null; SKL_TEST_NO_LONGPATHS = $null; SKL_DIR = $null }
+            MODPACK = $null; PROFILE = $null; MEMORY_MAX = $null; DESKTOP_SHORTCUT = $null; SKL_TEST_NO_LONGPATHS = $null; SKL_INSTANCES_DIR = $null }
   foreach ($k in $vars.Keys) { $env[$k] = $vars[$k] }
   $saved = @{}
   foreach ($k in $env.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k, 'Process'); [Environment]::SetEnvironmentVariable($k, $env[$k], 'Process') }
@@ -231,14 +231,21 @@ try {
   Stop-Process -Id $run.Id -Force
   Check ($t6d.Code -eq 1 -and $t6d.Out -match 'bandeja') 'con ese oficial abierto, aborta'
 
-  Section '6c. Carpeta de datos del oficial en otra unidad: se elige pegando la ruta de una instancia y se recuerda'
-  $g = "$c\G\juegos\maincra"
-  New-Item -ItemType Directory -Force "$g\instances\neocozy" | Out-Null
-  $t6e = Install $c @{ MODPACK = 'fakepack'; PROFILE = 'low'; SKL_DIR = "$g\instances\neocozy" }
-  Check ($t6e.Code -eq 0 -and (Mods ([pscustomobject]@{ Inst = "$g\instances" }) 'fakepack').Count -eq 3) 'la instancia queda en G:\...\maincra\instances\fakepack'
-  Check ((@((Get-Content -Raw -Encoding UTF8 "$g\instances.json" | ConvertFrom-Json).instances) | Where-Object id -eq 'fakepack').directory -eq "$g\instances\fakepack") 'registrada en el instances.json de esa carpeta'
+  Section '6c. El oficial guarda sus instancias en otra unidad: la instancia va ahí y se registra con esa ruta'
+  $g = "$c\G\juegos\maincra\instances"
+  New-Item -ItemType Directory -Force "$g\otra" | Out-Null
+  $ij = "$c\Roaming\.sklauncher\instances.json"
+  $j = Get-Content -Raw -Encoding UTF8 $ij | ConvertFrom-Json
+  $j.instances = @($j.instances | Where-Object id -ne 'fakepack') + [pscustomobject]@{ id = 'otra'; name = 'Otra'; directory = "$g\otra" }
+  [IO.File]::WriteAllText($ij, (ConvertTo-Json -InputObject $j -Depth 10), (New-Object Text.UTF8Encoding($false)))
+  Remove-Item "$c\Roaming\.sklauncher\mine-script-state" -Recurse -Force
+  $t6e = Install $c @{ MODPACK = 'fakepack'; PROFILE = 'low' }
+  Check ($t6e.Code -eq 0 -and (Mods ([pscustomobject]@{ Inst = $g }) 'fakepack').Count -eq 3) 'deduce la carpeta de instancias del launcher (G:\...\instances) e instala ahí'
+  Check ((@((Get-Content -Raw -Encoding UTF8 $ij | ConvertFrom-Json).instances) | Where-Object id -eq 'fakepack').directory -eq "$g\fakepack") 'registrada con esa ruta'
   $t6f = Install $c @{ MODPACK = 'fakepack'; PROFILE = 'low' }
-  Check ($t6f.Code -eq 0 -and $t6f.Out -match [regex]::Escape("$g\instances\fakepack") -and $t6f.Out -match 'al día') 'la siguiente corrida recuerda la carpeta y solo actualiza'
+  Check ($t6f.Code -eq 0 -and $t6f.Out -match [regex]::Escape("$g\fakepack") -and $t6f.Out -match 'al día') 'la siguiente corrida usa la ruta registrada y solo actualiza'
+  $t6g = Install $c @{ MODPACK = 'fakepack'; PROFILE = 'high'; SKL_INSTANCES_DIR = "$c\H\mc\instances\neocozy" }
+  Check ($t6g.Code -eq 0 -and (Mods ([pscustomobject]@{ Inst = "$c\H\mc\instances" }) 'fakepack-high').Count -eq 5) 'pegar la ruta de una instancia usa su carpeta de instancias'
 
   Section '7. Descarga interrumpida: al reintentar se recupera'
   Start-Srv @('-DropPath', 'fakepack/base.zip', '-DropAfter', '1000000', '-DropCount', '10')

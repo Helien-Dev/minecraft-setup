@@ -10,7 +10,8 @@
   instalar.
 - **Windows:** detecta el SKLauncher oficial aunque esté instalado en otra carpeta (por su acceso del Menú Inicio) y
   agrega la instancia a ese, sin instalar el portable.
-- **Windows:** pregunta la carpeta de datos de SKLauncher (se puede mover a otra unidad) y la recuerda.
+- **Windows:** respeta la carpeta de instancias del SKLauncher oficial aunque esté en otra unidad (la deduce de
+  `instances.json` y la propone), y reutiliza la ruta de una instancia ya registrada.
 - **Launcher de Linux:** se baja del beta oficial en GitHub (4.0.54).
 - **`scripts/publish.py`** reemplaza a `package-instance.sh`: `standard`, `profile`, `site` y `clean`.
 - **Mods prohibidos por modpack** (`banned` en `catalog.json`): NeoCozy prohíbe HT's TreeChop.

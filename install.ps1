@@ -48,36 +48,8 @@ try {
            'junto al reloj: clic derecho > salir) y vuelve a ejecutar el script. No se cambió nada.')
   }
 
-  # Acepta la carpeta de datos, su carpeta instances o la de una instancia (G:\juegos\maincra\instances\neocozy).
-  function Resolve-SklDir($path) {
-    $p = [IO.Path]::GetFullPath($path.Trim().Trim('"')).TrimEnd('\')
-    $parent = [IO.Path]::GetDirectoryName($p)
-    if ($parent -and [IO.Path]::GetFileName($parent) -eq 'instances') { return [IO.Path]::GetDirectoryName($parent) }
-    if ([IO.Path]::GetFileName($p) -eq 'instances') { return $parent }
-    $p
-  }
-
-  # El oficial deja mover su carpeta de datos (instances.json + instances\): se pregunta y se recuerda la elección.
-  if ($UseOfficial) {
-    $SavedDir = Join-Path $env:LOCALAPPDATA 'mine-script\sklauncher-dir.txt'
-    $SklDir = if ($env:SKL_DIR) { $env:SKL_DIR } elseif (Test-Path -LiteralPath $SavedDir) { (Get-Content -Raw -LiteralPath $SavedDir).Trim() } else { Join-Path $env:APPDATA '.sklauncher' }
-    if (-not $env:SKL_DIR -and -not $env:MODPACK) {
-      Write-Host ''
-      $answer = Read-Host "Carpeta de SKLauncher donde van las instancias (Enter = $SklDir)"
-      if ($answer) { $SklDir = $answer }
-    }
-    $SklDir = Resolve-SklDir $SklDir
-    $looksRight = (Test-Path -LiteralPath (Join-Path $SklDir 'instances')) -or (Test-Path -LiteralPath (Join-Path $SklDir 'instances.json'))
-    if (-not $looksRight -and -not $env:MODPACK -and (Read-Host "En $SklDir no hay instancias de SKLauncher. ¿Usarla igual? [s/N]") -notmatch '^[sSyY]') {
-      throw 'Instalación cancelada. Vuelve a ejecutar el script y escribe la carpeta donde SKLauncher guarda sus instancias.'
-    }
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $SavedDir) | Out-Null
-    [IO.File]::WriteAllText($SavedDir, $SklDir)
-    $StateDir = Join-Path $SklDir 'mine-script-state'
-  } else {
-    $SklDir   = Join-Path $LauncherDir 'data\.sklauncher'
-    $StateDir = Join-Path $LauncherDir 'state'
-  }
+  $SklDir   = if ($UseOfficial) { Join-Path $env:APPDATA '.sklauncher' } else { Join-Path $LauncherDir 'data\.sklauncher' }
+  $StateDir = if ($UseOfficial) { Join-Path $SklDir 'mine-script-state' } else { Join-Path $LauncherDir 'state' }
   $DlDir         = Join-Path $StateDir 'dl'   # descargas en curso (las grandes se reanudan)
   $InstancesJson = Join-Path $SklDir 'instances.json'
 
@@ -226,7 +198,33 @@ try {
   if ($MemoryMax -notmatch '^[0-9]+$') { throw "MEMORY_MAX debe ser un número en MB (se recibió '$MemoryMax')." }
   $Launcher = $cat.launcher.windows
   $InstanceType = if ($pack.type) { $pack.type } else { 'modpack' }
-  $InstanceDir  = Join-Path $SklDir "instances\$InstanceId"    # SKLauncher ignora otro `directory`
+  $InstanceDir  = Join-Path $SklDir "instances\$InstanceId"    # SKLauncher arma la carpeta desde su carpeta de instancias, no desde `directory`
+  if ($UseOfficial) {
+    # El oficial permite mover su carpeta de instancias (p. ej. a G:\juegos\maincra\instances): se sigue la que ya usa.
+    $registered = @()
+    try { $registered = @((Get-Content -Raw -Encoding UTF8 -LiteralPath $InstancesJson | ConvertFrom-Json).instances | Where-Object { $_.directory }) } catch { }
+    $mine = $registered | Where-Object { $_.id -eq $InstanceId } | Select-Object -First 1
+    if ($mine) {
+      $InstanceDir = $mine.directory
+    } else {
+      $root = if ($env:SKL_INSTANCES_DIR) { $env:SKL_INSTANCES_DIR } else { ($registered | ForEach-Object { Split-Path -Parent $_.directory } | Group-Object | Sort-Object Count -Descending | Select-Object -First 1).Name }
+      if (-not $root) { $root = Join-Path $SklDir 'instances' }
+      if (-not $env:SKL_INSTANCES_DIR -and -not $env:MODPACK) {
+        Write-Host ''
+        $answer = Read-Host "Carpeta de instancias de tu SKLauncher (Enter = $root)"
+        if ($answer) { $root = $answer }
+      }
+      $root = [IO.Path]::GetFullPath($root.Trim().Trim('"')).TrimEnd('\')
+      $parent = [IO.Path]::GetDirectoryName($root)
+      if ([IO.Path]::GetFileName($root) -ne 'instances') {
+        if ($parent -and [IO.Path]::GetFileName($parent) -eq 'instances') { $root = $parent }                  # pegaron la carpeta de una instancia
+        elseif (Test-Path -LiteralPath (Join-Path $root 'instances')) { $root = Join-Path $root 'instances' }  # pegaron la carpeta de datos
+      }
+      $InstanceDir = Join-Path $root $InstanceId
+      $besideJson = Join-Path ([IO.Path]::GetDirectoryName($root)) 'instances.json'
+      if (Test-Path -LiteralPath $besideJson) { $InstancesJson = $besideJson }
+    }
+  }
   $StateFile    = Join-Path $StateDir "$InstanceId.json"
   $ModsDir      = Join-Path $InstanceDir 'mods'
   $PackUrl      = Join-Url ($pack.prefix + '/')
