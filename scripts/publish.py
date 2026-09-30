@@ -21,14 +21,14 @@ UTF8_TEXT = ["--header-upload", "Content-Type: text/plain; charset=utf-8"]
 ANYWHERE = {
     "saves", "screenshots", "logs", "crash-reports", "servers.dat", "servers.dat_old", "command_history.txt",
     "downloads", "bin", "natives", ".mixin.out", "fancymenu_data", "dynamic-resource-pack-cache",
-    "dynamic-data-pack-cache", "server-resource-packs", "observable_announce", "ESM",
+    "dynamic-data-pack-cache", "server-resource-packs", "observable_announce", "ESM", "search_index",
 }
 # Igual, pero solo en la raíz de la instancia (hay carpetas homónimas más adentro, p. ej. kubejs/data/gtceu).
 AT_ROOT = [
     "mods", "_backup-*", "journeymap", "simplebackups", "usercache.json", "usernamecache.json", "local",
     "confluence", "blueprints", "gtceu", "cache", ".cache", "particular_cache", "patchouli_data.json",
     ".qmenu_opened.marker", "mods_disabled", "showdown", "xaero", "XaeroWaypoints_BACKUP*", "debug",
-    "cobblemon-battle-logs", "zandercore", "hs_err_pid*.log", "lightspeed-cache",
+    "cobblemon-battle-logs", "zandercore", "hs_err_pid*.log", "lightspeed-cache", "Distant_Horizons_server_data",
 ]
 
 

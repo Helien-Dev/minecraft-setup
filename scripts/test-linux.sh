@@ -69,10 +69,10 @@ check '[ -e "$INST/config/perf.toml" ] && grep -q "v = 1" "$INST/config/a.toml" 
 
 echo "== config y mod nuevos en el standard"
 echo "v = 2" > "$SRC/config/a.toml"; echo "nuevo" > "$SRC/config/b.toml"; mkdir -p "$SRC/kubejs"; echo "k2" > "$SRC/kubejs/k.js"
-echo jugador > "$INST/options.txt"; jar b.jar; rm "$SRC/mods/a.jar"
+echo jugador > "$INST/options.txt"; echo mio > "$INST/config/propio.toml"; jar b.jar; rm "$SRC/mods/a.jar"
 publish standard neocozy "$SRC"
 : > "$WORK/server.log"; install performance
-check 'grep -q "v = 1" "$INST/config/a.toml" && grep -q nuevo "$INST/config/b.toml" && grep -q k2 "$INST/kubejs/k.js" && grep -q jugador "$INST/options.txt"' "config existente intacta; llegan config nueva y kubejs"
+check 'grep -q "v = 1" "$INST/config/a.toml" && grep -q nuevo "$INST/config/b.toml" && grep -q k2 "$INST/kubejs/k.js" && grep -q jugador "$INST/options.txt" && grep -q mio "$INST/config/propio.toml"' "config existente intacta (ni la propia del jugador se borra); llegan config nueva y kubejs"
 check '[ $(grep -c "/mods/" "$WORK/server.log") -eq 1 ] && [ ! -e "$INST/mods/a.jar" ]' "solo bajó b.jar y borró a.jar"
 
 echo "== estado de una versión anterior (sin base)"
