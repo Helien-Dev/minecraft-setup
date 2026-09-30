@@ -37,18 +37,8 @@ try {
   # Con el SKLauncher oficial instalado, la instancia va a ese; si no, se usa (o instala) el portable.
   $OfficialExe = Find-OfficialExe
   $UseOfficial = [bool]$OfficialExe
-  if ($UseOfficial) {
-    $LauncherDir = Split-Path -Parent $OfficialExe
-    $SklDir      = Join-Path $env:APPDATA '.sklauncher'
-    $StateDir    = Join-Path $SklDir 'mine-script-state'
-  } else {
-    $LauncherDir = Join-Path $env:LOCALAPPDATA 'Programs\SKLauncher-Portable'
-    $SklDir      = Join-Path $LauncherDir 'data\.sklauncher'
-    $StateDir    = Join-Path $LauncherDir 'state'
-  }
-  $DlDir         = Join-Path $StateDir 'dl'   # descargas en curso (las grandes se reanudan)
-  $InstancesJson = Join-Path $SklDir 'instances.json'
-  $StartMenu     = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
+  $LauncherDir = if ($UseOfficial) { Split-Path -Parent $OfficialExe } else { Join-Path $env:LOCALAPPDATA 'Programs\SKLauncher-Portable' }
+  $StartMenu   = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
 
   # Con SKLauncher abierto, reescribe instances.json y se pierde el registro (solo cuenta el de $LauncherDir).
   $running = @(Get-CimInstance Win32_Process -Filter "Name='sklauncher.exe'" | Where-Object {
@@ -57,6 +47,39 @@ try {
     throw ('SKLauncher está abierto. Ciérralo (también desde el ícono de la bandeja del sistema, ' +
            'junto al reloj: clic derecho > salir) y vuelve a ejecutar el script. No se cambió nada.')
   }
+
+  # Acepta la carpeta de datos, su carpeta instances o la de una instancia (G:\juegos\maincra\instances\neocozy).
+  function Resolve-SklDir($path) {
+    $p = [IO.Path]::GetFullPath($path.Trim().Trim('"')).TrimEnd('\')
+    $parent = [IO.Path]::GetDirectoryName($p)
+    if ($parent -and [IO.Path]::GetFileName($parent) -eq 'instances') { return [IO.Path]::GetDirectoryName($parent) }
+    if ([IO.Path]::GetFileName($p) -eq 'instances') { return $parent }
+    $p
+  }
+
+  # El oficial deja mover su carpeta de datos (instances.json + instances\): se pregunta y se recuerda la elección.
+  if ($UseOfficial) {
+    $SavedDir = Join-Path $env:LOCALAPPDATA 'mine-script\sklauncher-dir.txt'
+    $SklDir = if ($env:SKL_DIR) { $env:SKL_DIR } elseif (Test-Path -LiteralPath $SavedDir) { (Get-Content -Raw -LiteralPath $SavedDir).Trim() } else { Join-Path $env:APPDATA '.sklauncher' }
+    if (-not $env:SKL_DIR -and -not $env:MODPACK) {
+      Write-Host ''
+      $answer = Read-Host "Carpeta de SKLauncher donde van las instancias (Enter = $SklDir)"
+      if ($answer) { $SklDir = $answer }
+    }
+    $SklDir = Resolve-SklDir $SklDir
+    $looksRight = (Test-Path -LiteralPath (Join-Path $SklDir 'instances')) -or (Test-Path -LiteralPath (Join-Path $SklDir 'instances.json'))
+    if (-not $looksRight -and -not $env:MODPACK -and (Read-Host "En $SklDir no hay instancias de SKLauncher. ¿Usarla igual? [s/N]") -notmatch '^[sSyY]') {
+      throw 'Instalación cancelada. Vuelve a ejecutar el script y escribe la carpeta donde SKLauncher guarda sus instancias.'
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $SavedDir) | Out-Null
+    [IO.File]::WriteAllText($SavedDir, $SklDir)
+    $StateDir = Join-Path $SklDir 'mine-script-state'
+  } else {
+    $SklDir   = Join-Path $LauncherDir 'data\.sklauncher'
+    $StateDir = Join-Path $LauncherDir 'state'
+  }
+  $DlDir         = Join-Path $StateDir 'dl'   # descargas en curso (las grandes se reanudan)
+  $InstancesJson = Join-Path $SklDir 'instances.json'
 
   function Join-Url($rel) { ([Uri]::new([Uri]$CatalogUrl, $rel)).AbsoluteUri }
 
