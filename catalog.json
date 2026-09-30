@@ -1,6 +1,6 @@
 {
   "launcher": {
-    "linux":   {"url": "SKlauncher-4.0.46-x86_64.AppImage", "version": "4.0.46"},
+    "linux":   {"url": "https://github.com/sklauncher/binaries/releases/download/v4.0.54/SKlauncher-4.0.54-x86_64.AppImage", "version": "4.0.54"},
     "windows": {"url": "sk-portable.zip", "version": "4.0.51"}
   },
   "modpacks": [
@@ -14,7 +14,7 @@
       "memoryMax": 8192,
       "prefix": "atm10sky",
       "profiles": [
-        {"id": "default", "tar": "atm10sky-instance.tar.gz", "manifest": "atm10sky/manifest.json"}
+        {"id": "default"}
       ]
     },
     {
@@ -29,8 +29,25 @@
       "memoryMax": 8192,
       "prefix": "neofresh",
       "profiles": [
-        {"id": "high", "label": "Gama Alta", "tar": "neofresh/high/instance.tar.gz", "manifest": "neofresh/high/manifest.json"},
-        {"id": "low",  "label": "Gama Baja", "tar": "neofresh/low/instance.tar.gz",  "manifest": "neofresh/low/manifest.json"}
+        {"id": "high", "label": "Gama Alta"},
+        {"id": "low",  "label": "Gama Baja"}
+      ]
+    },
+    {
+      "id": "neocozy",
+      "name": "NeoCozy",
+      "type": "custom",
+      "icon": "Furnace_On",
+      "minecraft": "1.21.1",
+      "loader": "neoforge",
+      "loaderVersion": "21.1.251",
+      "versionId": "1.21.1-neoforge-21.1.251",
+      "memoryMax": 10240,
+      "prefix": "neocozy",
+      "banned": ["treechop"],
+      "profiles": [
+        {"id": "standard",    "label": "Standard"},
+        {"id": "performance", "label": "Performance"}
       ]
     }
   ]

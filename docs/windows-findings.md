@@ -1,3 +1,5 @@
+> Histórico: describe el formato anterior de R2 (tar.gz por perfil). El formato actual está en [publicar.md](publicar.md).
+
 # Hallazgos de Windows (Fase 0 y Fase 1)
 
 Estado: **Fases 0 a 4 completas.** `install.ps1` está escrito y probado (70 comprobaciones

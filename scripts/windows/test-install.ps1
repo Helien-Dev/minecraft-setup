@@ -1,15 +1,4 @@
-﻿# test-install.ps1
-#
-# Pruebas de aceptación automáticas de install.ps1 contra un R2 falso local (sin internet,
-# sin tocar tu perfil real): cada caso corre con LOCALAPPDATA/APPDATA/USERPROFILE apuntando
-# a una carpeta de prueba, así que el launcher, el Menú Inicio y las instancias quedan ahí.
-# Herramienta de DESARROLLO (no se publica).
-#
-#   .\scripts\windows\test-install.ps1            # usa C:\mct como carpeta de trabajo (ruta corta a propósito)
-#   .\scripts\windows\test-install.ps1 -Work D:\mct
-#
-# Cubre las pruebas 2 a 7 de la Fase 3 (la 1, con el juego real, se hace a mano) más: instalación
-# limpia, menú interactivo, sin internet, falta de espacio y `irm | iex` con acentos.
+﻿# Pruebas de install.ps1 contra un R2 falso local, con un usuario de prueba aislado (uso: .\scripts\windows\test-install.ps1 [-Work D:\mct]).
 param([string]$Work = 'C:\mct', [int]$Port = 8099)
 $ErrorActionPreference = 'Stop'
 $Repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -26,7 +15,7 @@ function Section($t) { Write-Host "`n== $t" -ForegroundColor Cyan }
 function Stop-Srv { if ($script:srv -and -not $script:srv.HasExited) { Stop-Process -Id $script:srv.Id -Force }; $script:srv = $null }
 function Start-Srv($extra = @()) {
   Stop-Srv
-  $a = @('-NoProfile', '-File', "$Repo\scripts\windows\serve-test.ps1", '-Root', "$Work\r2", '-Port', $Port, '-LogFile', $Log, '-HugePath', 'hugepack') + $extra
+  $a = @('-NoProfile', '-File', "$Repo\scripts\windows\serve-test.ps1", '-Root', "$Work\r2", '-Port', $Port, '-LogFile', $Log) + $extra
   $script:srv = Start-Process powershell -ArgumentList $a -WindowStyle Hidden -PassThru
   for ($i = 0; $i -lt 20; $i++) {
     try { $null = Invoke-WebRequest -UseBasicParsing -Method Head $Url; return } catch { Start-Sleep -Milliseconds 300 }
@@ -79,6 +68,7 @@ try {
   $sc = (New-Object -ComObject WScript.Shell).CreateShortcut((Lnk $t1))
   Check ($sc.TargetPath -eq "$($t1.L)\SKLauncher-Portable.bat" -and $sc.WindowStyle -eq 7) 'el .lnk apunta al .bat con estilo 7 (minimizado)'
   Check ((Mods $t1 'fakepack').Count -eq 3) 'la instancia tiene los 3 mods de la gama baja'
+  Check ((Test-Path "$($t1.Inst)\fakepack\config\low.toml") -and -not (Test-Path "$($t1.Inst)\fakepack\resourcepacks\pack.zip")) 'low trae su configuración propia y no el archivo que salta'
   $i1 = @(Instances $t1)
   Check ($i1.Count -eq 1 -and $i1[0].id -eq 'fakepack' -and $i1[0].name -eq 'FakePack' -and $i1[0].type -eq 'custom') 'instances.json: una instancia "FakePack" (custom)'
   Check ($i1[0].playTime -eq 0 -and $i1[0].sessionCount -eq 0 -and $i1[0].customLaunchHooks -eq $false -and $i1[0].memoryMax -eq 6144) 'campos nuevos: playTime/sessionCount 0, customLaunchHooks false, memoryMax 6144'
@@ -105,7 +95,7 @@ try {
   Check ($i2[0].name -eq 'Mi nombre' -and $i2[0].playTime -eq 123 -and $i2[0].memoryMax -eq 9999) 'se conservan name, playTime y memoryMax del usuario'
   Check ((Get-Content "$($t1.Inst)\fakepack\saves\prueba\level.dat") -eq 'partida') 'saves\prueba intacto'
   Check ((Get-Content "$($t1.Inst)\fakepack\options.txt") -eq 'MARCA-DEL-JUGADOR') 'options.txt intacto'
-  Check (-not ($req -match 'sk-portable.zip|instance.tar.gz')) 'no volvió a bajar el launcher ni el paquete completo'
+  Check (-not ($req -match 'sk-portable.zip|base.zip|/mods/')) 'no volvió a bajar el launcher, la configuración ni los mods'
   Check ($t2.Out -match 'ya está instalado' -and $t2.Out -match 'al día') 'avisa que el launcher y los mods ya están al día'
   Check (Test-Path "$($t1.L)\data\.sklauncher\instances.json.bak.pre-install") 'dejó copia .bak.pre-install'
 
@@ -146,7 +136,7 @@ try {
   Check ((Get-Content "$($t1.Inst)\fakepack\options.txt") -eq 'MARCA-DEL-JUGADOR') 'options.txt de la primera intacto'
 
   Section '4. Actualización incremental: solo se baja el mod que cambió'
-  $m = Get-Content -Raw "$Work\r2\fakepack\low\manifest.json" | ConvertFrom-Json
+  $m = Get-Content -Raw "$Work\r2\fakepack\manifest.json" | ConvertFrom-Json
   $nb = New-Object byte[] 1500000; (New-Object Random).NextBytes($nb)
   [IO.File]::WriteAllBytes("$Work\r2\fakepack\mods\alpha-1.0.jar", $nb)             # alpha cambia
   [IO.File]::WriteAllBytes("$Work\r2\fakepack\mods\zeta nuevo+1.0.jar", $nb)        # zeta se agrega (con espacio y "+")
@@ -154,20 +144,43 @@ try {
   $hash = (Get-FileHash "$Work\r2\fakepack\mods\alpha-1.0.jar" -Algorithm SHA256).Hash.ToLower()
   $m.mods.'alpha-1.0.jar'.sha256 = $hash
   $m.mods | Add-Member -NotePropertyName 'zeta nuevo+1.0.jar' -NotePropertyValue ([pscustomobject]@{ sha256 = $hash; size = 1500000 })
-  [IO.File]::WriteAllText("$Work\r2\fakepack\low\manifest.json", (ConvertTo-Json -InputObject $m -Depth 6), (New-Object Text.UTF8Encoding($false)))
+  [IO.File]::WriteAllText("$Work\r2\fakepack\manifest.json", (ConvertTo-Json -InputObject $m -Depth 6), (New-Object Text.UTF8Encoding($false)))
   $n = Log-Count
   $t4 = Install "$($t1.Base)" @{ MODPACK = 'fakepack'; PROFILE = 'low' }
   $req = Log-Since $n | Where-Object { $_ -like 'GET*' }
   Check ($t4.Code -eq 0) 'termina sin error'
   $mods = @($req | Where-Object { $_ -like '*/mods/*' })
   Check ($mods.Count -eq 2 -and ($mods -join '|') -match 'alpha-1.0.jar' -and ($mods -join '|') -match 'zeta%20nuevo%2B1.0.jar') 'solo se descargaron alpha y zeta (nombre con espacio y "+" bien codificado)'
-  Check (-not ($req -match 'instance.tar.gz|sk-portable.zip')) 'no se bajó el paquete completo ni el launcher'
+  Check (-not ($req -match 'base.zip|sk-portable.zip')) 'no se bajó la configuración ni el launcher'
   $names = Mods $t4 'fakepack'
   Check (($names -join ',') -eq 'alpha-1.0.jar,beta mod+2.1 [neoforge].jar,zeta nuevo+1.0.jar') 'gamma se borró, zeta se agregó, beta intacto'
   Check ((Sha "$($t1.Inst)\fakepack\mods\alpha-1.0.jar").ToLower() -eq $hash) 'alpha tiene el contenido nuevo'
   Check ((Get-Content "$($t1.Inst)\fakepack\saves\prueba\level.dat") -eq 'partida') 'saves\prueba sigue intacto'
   $st4 = Get-Content -Raw "$($t1.L)\state\fakepack.json" | ConvertFrom-Json
   Check ($st4.profile -eq 'low' -and $st4.mods.PSObject.Properties['zeta nuevo+1.0.jar'] -and -not $st4.mods.PSObject.Properties['gamma-1.0.jar']) 'el estado guardado refleja el manifest nuevo'
+
+  Section '4b. El exclude es sagrado: un mod excluido que aparece en mods\ se borra'
+  Copy-Item "$Work\r2\fakepack\mods\delta-extra-1.0.jar" "$($t1.Inst)\fakepack\mods\" -Force
+  $t4b = Install "$($t1.Base)" @{ MODPACK = 'fakepack'; PROFILE = 'low' }
+  Check ($t4b.Code -eq 0 -and -not (Test-Path "$($t1.Inst)\fakepack\mods\delta-extra-1.0.jar")) 'delta (excluido en low) se borró'
+
+  Section '4c. Configuración nueva en R2: llega a quien ya tiene la instancia, sin pisar options.txt'
+  Copy-Item "$Work\r2\fakepack\base.zip", "$Work\r2\fakepack\manifest.json" $Work -Force   # se restauran al final (5b usa la ruta larga)
+  $cfg = "$Work\cfg-v2"
+  New-Item -ItemType Directory -Force "$cfg\config" | Out-Null
+  Set-Content "$cfg\config\a.toml" 'version = 2'
+  Set-Content "$cfg\options.txt" 'DEL-PAQUETE'
+  Remove-Item "$Work\r2\fakepack\base.zip"; Add-Type -AssemblyName System.IO.Compression.FileSystem
+  [IO.Compression.ZipFile]::CreateFromDirectory($cfg, "$Work\r2\fakepack\base.zip")
+  $m = Get-Content -Raw "$Work\r2\fakepack\manifest.json" | ConvertFrom-Json
+  $m.base.sha256 = (Sha "$Work\r2\fakepack\base.zip").ToLower(); $m.base.size = (Get-Item "$Work\r2\fakepack\base.zip").Length
+  [IO.File]::WriteAllText("$Work\r2\fakepack\manifest.json", (ConvertTo-Json -InputObject $m -Depth 6), (New-Object Text.UTF8Encoding($false)))
+  $t4c = Install "$($t1.Base)" @{ MODPACK = 'fakepack'; PROFILE = 'low' }
+  Check ($t4c.Code -eq 0 -and (Get-Content "$($t1.Inst)\fakepack\config\a.toml") -eq 'version = 2') 'config\a.toml se actualizó'
+  Check ((Get-Content "$($t1.Inst)\fakepack\options.txt") -eq 'MARCA-DEL-JUGADOR') 'options.txt del jugador intacto'
+  $t4d = Install "$($t1.Base)" @{ MODPACK = 'fakepack'; PROFILE = 'low' }
+  Check ($t4d.Out -notmatch 'Descargando la configuración') 'sin cambios en R2 no vuelve a bajar la configuración'
+  Copy-Item "$Work\base.zip", "$Work\manifest.json" "$Work\r2\fakepack\" -Force
 
   Section '5a. Usuario con espacio y acento en el nombre'
   $t5 = Install "$Work\Usuário Pérez" @{ MODPACK = 'fakepack'; PROFILE = 'low' }
@@ -203,17 +216,17 @@ try {
   Check ($t6b.Code -eq 0) 'un sklauncher.exe de OTRA ruta (el oficial) no bloquea'
 
   Section '7. Descarga interrumpida: al reintentar se recupera'
-  Start-Srv @('-DropPath', 'fakepack/high/instance.tar.gz', '-DropAfter', '1000000', '-DropCount', '10')
+  Start-Srv @('-DropPath', 'fakepack/base.zip', '-DropAfter', '1000000', '-DropCount', '10')
   $t7 = Install "$Work\t7" @{ MODPACK = 'fakepack'; PROFILE = 'high' }
   Check ($t7.Code -eq 1 -and $t7.Out -match 'No se pudo descargar') 'la primera corrida falla con un mensaje claro'
   $part = @(Get-ChildItem "$($t7.L)\state\dl" -Filter '*.part' -ErrorAction SilentlyContinue)
-  Check ($part.Count -eq 1 -and $part[0].Length -gt 0 -and $part[0].Length -lt 7503300) "queda una descarga parcial reanudable ($($part[0].Length) bytes)"
+  Check ($part.Count -eq 1 -and $part[0].Length -gt 0 -and $part[0].Length -lt (Get-Item "$Work\r2\fakepack\base.zip").Length) "queda una descarga parcial reanudable ($($part[0].Length) bytes)"
   Check (-not (Test-Path "$($t7.Inst)\fakepack") -or @(Get-ChildItem "$($t7.Inst)\fakepack" -ErrorAction SilentlyContinue).Count -eq 0) 'no se extrajo nada a medias'
   Start-Srv
   $n = Log-Count
   $t7b = Install "$Work\t7" @{ MODPACK = 'fakepack'; PROFILE = 'high' }
   Check ($t7b.Code -eq 0 -and (Mods $t7b 'fakepack').Count -eq 5) 'el reintento termina bien con los 5 mods'
-  Check ((Log-Since $n) -match 'GET /fakepack/high/instance.tar.gz \[bytes=[1-9]') 'el reintento reanudó con Range (no empezó de cero)'
+  Check ((Log-Since $n) -match 'GET /fakepack/base.zip \[bytes=[1-9]') 'el reintento reanudó con Range (no empezó de cero)'
   Check (@(Instances $t7b).Count -eq 1 -and (Mods $t7b 'fakepack').Count -eq 5) 'quedó una instancia con sus 5 mods'
 
   Section '8. Sin internet y sin espacio: errores claros'

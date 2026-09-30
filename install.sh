@@ -1,48 +1,8 @@
 #!/bin/sh
-# install.sh
-#
-# Instalador de un click de SKLauncher + modpacks. Pensado para correr así:
-#
-#   curl -sSL https://TU-DOMINIO/install.sh | sh
-#
-# Qué hace:
-#   1. Descarga el catálogo (catalog.json) y pregunta qué modpack quieres y,
-#      si el modpack tiene perfiles de gama, cuál perfil.
-#   2. Instala SKLauncher (un solo launcher global; si ya está en la versión
-#      del catálogo, no lo vuelve a bajar) y lo deja visible en el menú de
-#      aplicaciones.
-#   3. Primera vez: descarga el paquete completo del perfil elegido y lo
-#      coloca en ~/.sklauncher/instances/<id>/.
-#   4. Corridas siguientes: NO vuelve a bajar el paquete completo. Compara un
-#      manifest.json remoto (lista de mods + hash) contra el que guardó la
-#      última vez y baja/borra solo los mods que cambiaron.
-#   5. Registra la instancia en instances.json para que aparezca en
-#      SKLauncher sin que el usuario tenga que tocar nada.
-#
-# Nombres de instancia: la primera vez, el modpack se llama solo por su nombre
-# ("NeoFresh"). Si después instalas OTRO perfil del mismo modpack, la instancia
-# nueva lleva el perfil en el nombre ("NeoFresh Gama Baja") y la primera no se
-# toca. Volver a correr con el mismo perfil actualiza esa instancia en sitio.
-#
-# Para saltarte el menú (o si no hay terminal):
-#   curl -sSL https://TU-DOMINIO/install.sh | MODPACK=neofresh PROFILE=low sh
-#
-# Es POSIX sh a propósito (sin bashismos) para que funcione igual con
-# `sh`, `dash` o `bash`.
-#
-# Se puede re-ejecutar sin problema. Nunca toca partidas guardadas de una
-# instalación previa (no vienen en el paquete que se descarga).
-
+# Instalador de SKLauncher + modpacks para Linux (uso: curl -sSL https://minecraft-data.alvaroavila.dev/install.sh | sh).
 set -eu
 
-# ---------------------------------------------------------------------------
-# Configuración. Todo lo demás (URLs de launcher/modpacks, versiones, memoria)
-# sale del catálogo, relativo a la URL del catálogo.
-# ---------------------------------------------------------------------------
 CATALOG_URL="${CATALOG_URL:-https://minecraft-data.alvaroavila.dev/catalog.json}"
-ICON_URL="${ICON_URL:-}"    # opcional: PNG del ícono; si se deja vacío, se extrae del AppImage
-# ---------------------------------------------------------------------------
-
 SKL_DIR="$HOME/.sklauncher"
 APP_DIR="$HOME/.local/share/sklauncher"
 BIN_PATH="$APP_DIR/SKlauncher.AppImage"
@@ -56,53 +16,41 @@ ok()   { printf '\033[1;32m[OK]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 
-# --- chequeos previos ---
 [ "$(uname -s)" = "Linux" ] || die "Este instalador solo funciona en Linux (en Windows usa install.ps1)."
-case "$(uname -m)" in
-  x86_64) ;;
-  *) die "El AppImage de SKLauncher es x86_64 y esta máquina reporta $(uname -m)." ;;
-esac
-command -v curl    >/dev/null 2>&1 || die "Necesitas curl instalado."
-command -v tar     >/dev/null 2>&1 || die "Necesitas tar instalado."
-command -v python3 >/dev/null 2>&1 || die "Necesitas python3 instalado (viene por defecto en casi toda distro de escritorio)."
-
+[ "$(uname -m)" = "x86_64" ] || die "SKLauncher para Linux es x86_64 y esta computadora es $(uname -m)."
+for cmd in curl python3; do
+  command -v "$cmd" >/dev/null 2>&1 || die "Necesitas tener $cmd instalado."
+done
 if ! command -v fusermount >/dev/null 2>&1 && ! command -v fusermount3 >/dev/null 2>&1; then
-  warn "No se detectó FUSE. Los AppImage lo necesitan para ejecutarse."
-  warn "Si al abrir SKLauncher ves un error de FUSE, instala libfuse2, por ejemplo:"
-  warn "  Ubuntu/Debian: sudo apt install libfuse2t64 || sudo apt install libfuse2"
-  warn "  Fedora:        sudo dnf install fuse-libs"
-  warn "  Arch:          sudo pacman -S fuse2"
+  warn "No se detectó FUSE, que SKLauncher necesita. Si no abre, instala libfuse2 (Ubuntu/Debian: libfuse2t64, Fedora: fuse-libs, Arch: fuse2)."
 fi
 
 mkdir -p "$APP_DIR" "$DESKTOP_DIR" "$SKL_DIR/instances" "$STATE_DIR"
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "$WORK_DIR"' EXIT
 
-# --- 1) Catálogo + elección de modpack/perfil ---
-CATALOG_FILE="$(mktemp)"
-trap 'rm -f "$CATALOG_FILE"' EXIT
 log "Descargando catálogo..."
-curl -fL --retry 3 -s -o "$CATALOG_FILE" "$CATALOG_URL" || die "No se pudo descargar el catálogo desde $CATALOG_URL"
+curl -fsSL --retry 3 -o "$WORK_DIR/catalog.json" "$CATALOG_URL" || die "No se pudo descargar el catálogo desde $CATALOG_URL"
 
-# El menú se lee de /dev/tty porque con `curl | sh` el stdin es el propio script.
-# Se asigna aparte de `eval` porque `eval "$(...)"` ignora el error de python.
-PLAN="$(python3 - "$CATALOG_FILE" "$CATALOG_URL" "$STATE_DIR" <<'PYEOF'
-import sys, os, json, glob, shlex
+# Asignado aparte de `eval`: `eval "$(...)"` ignoraría un error de python.
+PLAN="$(python3 - "$WORK_DIR/catalog.json" "$CATALOG_URL" "$STATE_DIR" <<'PYEOF'
+import glob, json, os, shlex, sys
 from urllib.parse import urljoin
 
-cat_path, cat_url, state_dir = sys.argv[1:4]
-want_pack, want_prof = os.environ.get("MODPACK", ""), os.environ.get("PROFILE", "")
-cat = json.load(open(cat_path))
+catalog_path, catalog_url, state_dir = sys.argv[1:4]
+catalog = json.load(open(catalog_path, encoding="utf-8"))
 
 
 def ask(title, labels):
     try:
-        tty = open("/dev/tty")
+        tty = open("/dev/tty")  # con `curl | sh` la entrada estándar es el propio script
     except OSError:
         sys.exit("No hay terminal para mostrar el menú. Usa MODPACK=<id> PROFILE=<id> (ver catalog.json).")
     while True:
         print("\n" + title, file=sys.stderr)
         for i, label in enumerate(labels, 1):
-            print("  %d) %s" % (i, label), file=sys.stderr)
-        sys.stderr.write("Elige una opción [1-%d]: " % len(labels))
+            print(f"  {i}) {label}", file=sys.stderr)
+        sys.stderr.write(f"Elige una opción [1-{len(labels)}]: ")
         sys.stderr.flush()
         line = tty.readline()
         if not line:
@@ -111,102 +59,81 @@ def ask(title, labels):
             return int(line) - 1
 
 
-def choose(kind, items, want, label_of):
-    if want:
-        hit = next((x for x in items if x["id"] == want), None)
-        if not hit:
-            sys.exit("%s '%s' no existe. Disponibles: %s" % (kind, want, ", ".join(x["id"] for x in items)))
-        return hit
+def choose(kind, items, wanted, label_of):
+    if wanted:
+        hit = next((x for x in items if x["id"] == wanted), None)
+        return hit or sys.exit(f"{kind} '{wanted}' no existe. Disponibles: {', '.join(x['id'] for x in items)}")
     if len(items) == 1:
         return items[0]
-    return items[ask("¿Qué %s quieres instalar?" % kind.lower(), [label_of(x) for x in items])]
+    return items[ask(f"¿Qué {kind.lower()} quieres instalar?", [label_of(x) for x in items])]
 
 
-pack = choose("Modpack", cat["modpacks"], want_pack, lambda m: m["name"])
-prof = choose("Perfil", pack["profiles"], want_prof, lambda p: p.get("label") or p["id"])
-label = prof.get("label") or prof["id"]
+pack = choose("Modpack", catalog["modpacks"], os.environ.get("MODPACK", ""), lambda m: m["name"])
+profile = choose("Perfil", pack["profiles"], os.environ.get("PROFILE", ""), lambda p: p.get("label", p["id"]))
 
-# Qué instancias hay ya instaladas (un state/<id>.json por instancia; los de
-# instalaciones anteriores a los perfiles no traen modpack/profile: el id es el modpack).
+# Un state/<id>.json por instancia; los de versiones viejas no traen modpack/profile (el id es el modpack).
 installed = {}
-for f in glob.glob(os.path.join(state_dir, "*.json")):
+for path in glob.glob(os.path.join(state_dir, "*.json")):
     try:
-        d = json.load(open(f))
+        data = json.load(open(path, encoding="utf-8"))
     except ValueError:
         continue
-    installed[os.path.basename(f)[:-5]] = (d.get("modpack"), d.get("profile"))
+    installed[os.path.basename(path)[:-5]] = (data.get("modpack") or os.path.basename(path)[:-5], data.get("profile"))
 
-same = [i for i, (m, p) in installed.items()
-        if (m or i) == pack["id"] and p in (None, prof["id"])]
+same = sorted(i for i, (m, p) in installed.items() if m == pack["id"] and p in (None, profile["id"]))
 if same:
-    iid = same[0]                                   # mismo perfil: actualizar en sitio
-elif any((m or i) == pack["id"] for i, (m, _) in installed.items()):
-    iid = "%s-%s" % (pack["id"], prof["id"])        # otro perfil ya instalado: instancia aparte
+    instance_id = same[0]
+elif any(m == pack["id"] for m, _ in installed.values()):
+    instance_id = f"{pack['id']}-{profile['id']}"  # otro perfil del mismo modpack: instancia aparte
 else:
-    iid = pack["id"]                                # primera instalación de este modpack
-name = pack["name"] if iid == pack["id"] else "%s %s" % (pack["name"], label)
+    instance_id = pack["id"]
+name = pack["name"] if instance_id == pack["id"] else f"{pack['name']} {profile.get('label', profile['id'])}"
 
-launcher = cat["launcher"]["linux"]
-out = {
-    "MODPACK_ID": pack["id"], "PROFILE_ID": prof["id"],
-    "INSTANCE_ID": iid, "INSTANCE_NAME": name,
+launcher = catalog["launcher"]["linux"]
+plan = {
+    "MODPACK_ID": pack["id"], "PROFILE_ID": profile["id"], "INSTANCE_ID": instance_id, "INSTANCE_NAME": name,
     "INSTANCE_TYPE": pack.get("type", "modpack"), "INSTANCE_ICON": pack.get("icon", ""),
-    "MC_VERSION": pack["minecraft"], "LOADER": pack["loader"],
-    "LOADER_VERSION": pack["loaderVersion"], "VERSION_ID": pack["versionId"],
-    "MEMORY_MAX": os.environ.get("MEMORY_MAX") or str(pack["memoryMax"]),
-    "MODPACK_URL": urljoin(cat_url, prof["tar"]),
-    "MANIFEST_URL": urljoin(cat_url, prof["manifest"]),
-    "MOD_BASE_URL": urljoin(cat_url, pack["prefix"] + "/mods"),
-    "SKLAUNCHER_URL": urljoin(cat_url, launcher["url"]),
-    "LAUNCHER_VERSION": launcher["version"],
+    "MC_VERSION": pack["minecraft"], "LOADER": pack["loader"], "LOADER_VERSION": pack["loaderVersion"],
+    "VERSION_ID": pack["versionId"], "MEMORY_MAX": os.environ.get("MEMORY_MAX") or str(pack["memoryMax"]),
+    "PACK_URL": urljoin(catalog_url, pack["prefix"] + "/"),
+    "PROFILE_FILE": "" if profile is pack["profiles"][0] else f"profiles/{profile['id']}.json",
+    "SKLAUNCHER_URL": urljoin(catalog_url, launcher["url"]), "LAUNCHER_VERSION": launcher["version"],
 }
-for k, v in out.items():
-    print("%s=%s" % (k, shlex.quote(v)))
+for key, value in plan.items():
+    print(f"{key}={shlex.quote(value)}")
 PYEOF
 )"
 eval "$PLAN"
 
 INSTANCE_DIR="$SKL_DIR/instances/$INSTANCE_ID"
-LOCAL_MANIFEST="$STATE_DIR/$INSTANCE_ID.json"
+STATE_FILE="$STATE_DIR/$INSTANCE_ID.json"
 ok "Instalando: $INSTANCE_NAME"
+log "Carpeta de la instancia: $INSTANCE_DIR"
 
-# SKLauncher reescribe instances.json completo mientras está abierto y pisa los cambios
-# externos (verificado en Windows): registrar la instancia con el launcher abierto se pierde.
+# Con SKLauncher abierto, reescribe instances.json y se pierde el registro de la instancia.
 if [ -f "$BIN_PATH" ] && pgrep -f "$BIN_PATH" >/dev/null 2>&1; then
   die "SKLauncher está abierto. Ciérralo (también en la bandeja del sistema) y vuelve a ejecutar el script."
 fi
 
-# --- 2) SKLauncher (global: una sola vez por máquina) ---
 if [ -x "$BIN_PATH" ] && [ "$(cat "$STATE_DIR/launcher.version" 2>/dev/null)" = "$LAUNCHER_VERSION" ]; then
   ok "SKLauncher $LAUNCHER_VERSION ya está instalado."
 else
   log "Descargando SKLauncher $LAUNCHER_VERSION..."
   curl -fL --retry 3 --progress-bar -o "$BIN_PATH.tmp" "$SKLAUNCHER_URL"
+  chmod +x "$BIN_PATH.tmp"
   mv "$BIN_PATH.tmp" "$BIN_PATH"
-  chmod +x "$BIN_PATH"
   printf '%s' "$LAUNCHER_VERSION" > "$STATE_DIR/launcher.version"
   ok "SKLauncher instalado en $BIN_PATH"
 fi
 
-# --- 3) Ícono para el menú de aplicaciones ---
-if [ -n "$ICON_URL" ] && [ ! -f "$ICON_PATH" ]; then
-  log "Descargando ícono..."
-  curl -fL --retry 3 -o "$ICON_PATH" "$ICON_URL" || warn "No se pudo descargar el ícono, se usará uno genérico."
-fi
 if [ ! -f "$ICON_PATH" ]; then
-  log "Extrayendo ícono del AppImage..."
   EXTRACT_DIR="$(mktemp -d)"
-  ( cd "$EXTRACT_DIR" \
-      && "$BIN_PATH" --appimage-extract 'usr/share/icons/hicolor/*/apps/*.png' >/dev/null 2>&1 \
-      || "$BIN_PATH" --appimage-extract '*.png' >/dev/null 2>&1 \
-      || true )
+  (cd "$EXTRACT_DIR" && { "$BIN_PATH" --appimage-extract 'usr/share/icons/hicolor/*/apps/*.png' || "$BIN_PATH" --appimage-extract '*.png'; } >/dev/null 2>&1 || true)
   FOUND_ICON="$(find -L "$EXTRACT_DIR" -iname '*.png' -type f 2>/dev/null | sort -r | head -n1)"
   [ -n "$FOUND_ICON" ] && cp "$FOUND_ICON" "$ICON_PATH"
   rm -rf "$EXTRACT_DIR"
 fi
 
-# --- 4) Entrada en el menú de aplicaciones ---
-log "Creando acceso directo en el menú de aplicaciones..."
 {
   echo "[Desktop Entry]"
   echo "Type=Application"
@@ -217,172 +144,158 @@ log "Creando acceso directo en el menú de aplicaciones..."
   echo "Terminal=false"
   echo "Categories=Game;"
 } > "$DESKTOP_FILE"
-chmod +x "$DESKTOP_FILE"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
-ok "SKLauncher ya aparece en el menú de aplicaciones."
+ok "SKLauncher aparece en el menú de aplicaciones."
 
-# --- 5) Modpack: instalación completa (primera vez) o actualización
-#         incremental de mods (corridas siguientes) ---
+# Mismo proceso para instalar y actualizar: base (config, kubejs...) si cambió y luego mods/ igual al perfil.
+python3 - "$PACK_URL" "$PROFILE_FILE" "$INSTANCE_DIR" "$STATE_FILE" "$WORK_DIR" "$MODPACK_ID" "$PROFILE_ID" <<'PYEOF' || die "No se pudo completar la instalación. Vuelve a ejecutar el script para reintentar."
+import hashlib, json, os, shutil, subprocess, sys, zipfile
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import quote
 
-# Guarda el manifest aplicado junto con a qué modpack/perfil pertenece esta instancia.
-save_state() {
-  python3 - "$1" "$LOCAL_MANIFEST" "$MODPACK_ID" "$PROFILE_ID" <<'PYEOF'
-import sys, json
-src, dst, modpack, profile = sys.argv[1:5]
-d = json.load(open(src))
-d["modpack"], d["profile"] = modpack, profile
-with open(dst, "w") as f:
-    json.dump(d, f, indent=2)
-PYEOF
-}
+pack_url, profile_file, instance_dir, state_file, work_dir, modpack, profile = sys.argv[1:8]
+PERSONAL = ("options.txt", "optionsof.txt", "optionsshaders.txt", "servers.dat", "servers.dat_old")
 
-ALREADY_INSTALLED=0
-if [ -s "$LOCAL_MANIFEST" ] && [ -d "$INSTANCE_DIR/mods" ] && [ -n "$(ls -A "$INSTANCE_DIR/mods" 2>/dev/null)" ]; then
-  ALREADY_INSTALLED=1
-fi
 
-REMOTE_MANIFEST="$(mktemp)"
-trap 'rm -f "$CATALOG_FILE" "$REMOTE_MANIFEST"' EXIT
+def download(url, dest):
+    subprocess.run(["curl", "-fsSL", "--retry", "3", "-o", dest, url], check=True)
 
-if [ "$ALREADY_INSTALLED" = "1" ]; then
-  log "Instancia ya instalada. Comprobando mods nuevos o actualizados..."
-  if ! curl -fL --retry 3 -s -o "$REMOTE_MANIFEST" "$MANIFEST_URL"; then
-    warn "No se pudo comprobar actualizaciones (¿sin internet?). Se deja el modpack como está."
-  elif python3 - "$LOCAL_MANIFEST" "$REMOTE_MANIFEST" "$INSTANCE_DIR/mods" "$MOD_BASE_URL" <<'PYEOF'
-import sys, os, json, urllib.request, urllib.parse, tempfile, shutil
 
-local_path, remote_path, mods_dir, base_url = sys.argv[1:5]
+def get_json(url):
+    dest = os.path.join(work_dir, "download.json")
+    download(url, dest)
+    return json.load(open(dest, encoding="utf-8"))
 
-with open(remote_path) as f:
-    remote = json.load(f).get("mods", {})
+
+def fetch_verified(url, meta, dest):
+    download(url, dest)
+    if sha256(dest) != meta["sha256"]:
+        sys.exit(f"{url} se descargó dañado.")
+    return dest
+
+
+def extract(zip_path, skip):
+    # Nunca pisa los archivos personales que el jugador ya tiene (opciones, servidores).
+    with zipfile.ZipFile(zip_path) as zf:
+        for info in zf.infolist():
+            dest = os.path.join(instance_dir, *info.filename.split("/"))
+            personal = info.filename in PERSONAL and os.path.exists(dest)
+            if info.is_dir() or info.filename in skip or personal or ".." in info.filename.split("/"):
+                continue
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            with zf.open(info) as src, open(dest, "wb") as out:
+                shutil.copyfileobj(src, out)
+
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+manifest = get_json(pack_url + "manifest.json")
+variant = get_json(pack_url + profile_file) if profile_file else {"exclude": [], "include": {}, "skip": []}
+exclude = set(variant["exclude"])
+target = {n: m for n, m in {**manifest["mods"], **variant["include"]}.items() if n not in exclude}
 try:
-    with open(local_path) as f:
-        local = json.load(f).get("mods", {})
-except (FileNotFoundError, json.JSONDecodeError):
-    local = {}
+    state = json.load(open(state_file, encoding="utf-8"))
+except (OSError, ValueError):
+    state = {}
+known = state.get("mods", {})
+mods_dir = os.path.join(instance_dir, "mods")
 
-to_fetch = []
-for name, meta in remote.items():
-    local_meta = local.get(name)
-    needs = (
-        local_meta is None
-        or local_meta.get("sha256") != meta.get("sha256")
-        or not os.path.isfile(os.path.join(mods_dir, name))
-    )
-    if needs:
-        to_fetch.append(name)
+config = variant.get("config", {}).get("sha256")
+if state.get("base") != manifest["base"]["sha256"] or state.get("config") != config or not os.path.isdir(mods_dir):
+    print("[*] Descargando la configuración del modpack...", flush=True)
+    extract(fetch_verified(pack_url + "base.zip", manifest["base"], os.path.join(work_dir, "base.zip")), set(variant["skip"]))
+    if config:
+        extract(fetch_verified(pack_url + profile_file[:-5] + ".zip", variant["config"], os.path.join(work_dir, "config.zip")), set())
+    print("[OK] Configuración al día (tus partidas y opciones no se tocaron).")
+os.makedirs(mods_dir, exist_ok=True)
 
-to_remove = [name for name in local if name not in remote]
 
-if not to_fetch and not to_remove:
-    print("Mods al día, nada que hacer.")
-    sys.exit(0)
+def outdated(name):
+    path = os.path.join(mods_dir, name)
+    if not os.path.isfile(path):
+        return True
+    return (known.get(name, {}).get("sha256") or sha256(path)) != target[name]["sha256"]
 
-print(f"{len(to_fetch)} mod(s) nuevo(s)/actualizado(s), {len(to_remove)} para quitar:")
 
-for name in to_fetch:
-    url = base_url.rstrip("/") + "/" + urllib.parse.quote(name)
-    req = urllib.request.Request(url, headers={"User-Agent": "curl/8.0"})
-    dest = os.path.join(mods_dir, name)
-    tmp_fd, tmp_path = tempfile.mkstemp(dir=mods_dir)
-    success = False
-    try:
-        print(f"  + {name}")
-        with urllib.request.urlopen(req, timeout=180) as resp, os.fdopen(tmp_fd, "wb") as out:
-            shutil.copyfileobj(resp, out)
-        os.replace(tmp_path, dest)
-        success = True
-    except Exception as e:
-        print(f"ERROR descargando {name}: {e}", file=sys.stderr)
-    finally:
-        if not success and os.path.exists(tmp_path):
-            os.remove(tmp_path)
-    if not success:
-        sys.exit(1)
+to_fetch = sorted(n for n in target if outdated(n))
+to_remove = sorted(n for n in (set(known) - set(target)) | exclude if os.path.exists(os.path.join(mods_dir, n)))
+if to_fetch:
+    size = sum(target[n]["size"] for n in to_fetch) / 1e6
+    print(f"[*] Descargando {len(to_fetch)} mod(s) ({size:.0f} MB)...", flush=True)
+    staging = os.path.join(instance_dir, ".mods-download")  # mismo disco que mods/ (y no en /tmp, que puede ser RAM)
+    shutil.rmtree(staging, ignore_errors=True)
+    os.makedirs(staging)
 
+    def fetch(name):
+        dest = os.path.join(staging, name)
+        download(pack_url + "mods/" + quote(name), dest)
+        if sha256(dest) != target[name]["sha256"]:
+            raise RuntimeError(f"{name} se descargó dañado")
+
+    with ThreadPoolExecutor(8) as pool:
+        list(pool.map(fetch, to_fetch))
+    for name in to_fetch:
+        if known:
+            print(f"  + {name}")
+        os.replace(os.path.join(staging, name), os.path.join(mods_dir, name))
+    os.rmdir(staging)
 for name in to_remove:
-    p = os.path.join(mods_dir, name)
-    if os.path.isfile(p):
-        print(f"  - {name}")
-        os.remove(p)
+    print(f"  - {name}")
+    os.remove(os.path.join(mods_dir, name))
+
+# Doble verificación: ningún mod excluido queda y todos los del perfil están.
+leftover = sorted(n for n in exclude if os.path.exists(os.path.join(mods_dir, n)))
+missing = sorted(n for n in target if not os.path.isfile(os.path.join(mods_dir, n)))
+if leftover or missing:
+    sys.exit(f"La carpeta mods/ quedó incorrecta. Sobran: {leftover}. Faltan: {missing}.")
+if not (to_fetch or to_remove):
+    print("[OK] Mods al día, nada que hacer.")
+
+with open(state_file + ".tmp", "w", encoding="utf-8") as f:
+    json.dump({"modpack": modpack, "profile": profile, "base": manifest["base"]["sha256"], "config": config, "mods": target}, f, indent=2)
+os.replace(state_file + ".tmp", state_file)
 PYEOF
-  then
-    save_state "$REMOTE_MANIFEST"
-    ok "Mods al día."
-  else
-    warn "Falló la actualización de mods (quedaron como estaban). Puedes reintentar corriendo el script de nuevo."
-  fi
-else
-  log "Descargando modpack ($INSTANCE_NAME)... puede tardar según tu conexión."
-  TMP_TAR="$(mktemp)"
-  curl -fL --retry 3 --progress-bar -o "$TMP_TAR" "$MODPACK_URL"
-  mkdir -p "$INSTANCE_DIR"
-  log "Instalando en $INSTANCE_DIR ..."
-  tar -xzf "$TMP_TAR" -C "$INSTANCE_DIR"
-  rm -f "$TMP_TAR"
-  ok "Modpack instalado (si ya jugabas antes, tus partidas guardadas no se tocaron)."
 
-  if curl -fL --retry 3 -s -o "$REMOTE_MANIFEST" "$MANIFEST_URL"; then
-    save_state "$REMOTE_MANIFEST"
-    ok "Estado guardado: la próxima vez solo se van a bajar los mods que cambien."
-  else
-    warn "No se pudo guardar el estado inicial; la próxima corrida hará una instalación completa de nuevo."
-  fi
-fi
-
-# --- 6) Registrar la instancia en instances.json ---
 log "Registrando la instancia en SKLauncher..."
 python3 - "$SKL_DIR/instances.json" "$INSTANCE_ID" "$INSTANCE_NAME" "$INSTANCE_TYPE" "$INSTANCE_ICON" \
   "$VERSION_ID" "$LOADER" "$MC_VERSION" "$LOADER_VERSION" "$INSTANCE_DIR" "$MEMORY_MAX" <<'PYEOF'
-import json, os, shutil, sys, datetime
+import datetime, json, os, shutil, sys
 
 path, iid, name, type_, icon, version_id, loader, mc_version, loader_version, directory, memory_max = sys.argv[1:12]
-
-if os.path.exists(path):
-    with open(path) as f:
-        data = json.load(f)
-else:
-    data = {"instances": []}
-data.setdefault("instances", [])
-
+data = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+instances = data.setdefault("instances", [])
 new = {
-    "id": iid,
-    "name": name,
-    "type": type_,
-    "installComplete": True,
-    "versionId": version_id,
-    "gameType": loader,
-    "minecraftVersion": mc_version,
-    "loaderVersion": loader_version,
-    "directory": directory,
-    "memoryMax": int(memory_max),
+    "id": iid, "name": name, "type": type_, "installComplete": True, "versionId": version_id, "gameType": loader,
+    "minecraftVersion": mc_version, "loaderVersion": loader_version, "directory": directory, "memoryMax": int(memory_max),
 }
 if icon:
     new["icon"] = icon
 
-old = next((i for i in data["instances"] if i.get("id") == iid), None)
+old = next((i for i in instances if i.get("id") == iid), None)
 if old:
-    # Conserva lo que el usuario ya cambió o generó (nombre, memoria, tiempo jugado...).
-    merged = {**old, **new}
-    for k in ("name", "memoryMax"):
-        if k in old:
-            merged[k] = old[k]
-    data["instances"][data["instances"].index(old)] = merged
+    # Conserva lo que el jugador cambió (nombre, memoria) y lo que generó el launcher (tiempo jugado...).
+    old.update({k: v for k, v in new.items() if k not in ("name", "memoryMax") or k not in old})
 else:
     # Sin playTime el launcher escribe null tras la primera sesión.
     new.update(playTime=0, sessionCount=0, customLaunchHooks=False,
                createdAt=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
-    data["instances"].append(new)
+    instances.append(new)
 
 if os.path.exists(path):
     shutil.copy2(path, path + ".bak.pre-install")
-with open(path + ".tmp", "w") as f:
+with open(path + ".tmp", "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2)
 os.replace(path + ".tmp", path)
 PYEOF
 ok "Instancia \"$INSTANCE_NAME\" registrada."
 
 echo
-ok "¡Listo! Abre SKLauncher desde el menú de aplicaciones, inicia sesión y"
-ok "selecciona la instancia \"$INSTANCE_NAME\"."
-warn "La primera vez que la juegues, SKLauncher puede descargar Minecraft, NeoForge y Java (~1 GB): necesitas internet."
+ok "¡Listo! Abre SKLauncher desde el menú de aplicaciones, inicia sesión y elige la instancia \"$INSTANCE_NAME\"."
+ok "Instalada en: $INSTANCE_DIR"
+warn "La primera vez que la juegues, SKLauncher descarga Minecraft, NeoForge y Java (~1 GB): necesitas internet."

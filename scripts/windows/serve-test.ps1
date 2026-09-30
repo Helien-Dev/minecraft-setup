@@ -1,29 +1,12 @@
-# serve-test.ps1
-#
-# Servidor estático mínimo para probar install.ps1 sin R2 (solo System.Net.HttpListener,
-# sin Python). Sirve una carpeta con el mismo layout que R2 y apunta $env:CATALOG_URL ahí:
-#
-#   .\scripts\windows\serve-test.ps1 -Root C:\ruta\r2-falso -Port 8099
-#   $env:CATALOG_URL = 'http://localhost:8099/catalog.json'
-#
-# Soporta GET/HEAD y `Range: bytes=N-` (reanudar descargas, como R2). Se detiene con Ctrl+C.
-#
-# Opciones para pruebas:
-#   -LogFile    archivo donde anota cada petición ("GET /ruta [Range]")
-#   -DropPath   si la ruta contiene este texto, corta la conexión a mitad de la descarga...
-#   -DropAfter  ...tras enviar estos bytes (default 300000)...
-#   -DropCount  ...las primeras N veces (default 0 = nunca)
-#   -HugePath   los HEAD a rutas que contengan este texto anuncian ~1 TB (prueba de falta de espacio)
-#   -NoCharset  sirve .ps1 como "text/plain" sin charset (para probar la decodificación de `irm`)
+﻿# Servidor estático con el layout de R2 para probar install.ps1 (uso: -Root <carpeta> y $env:CATALOG_URL='http://localhost:8099/catalog.json').
 param(
   [Parameter(Mandatory)][string]$Root,
   [int]$Port = 8099,
   [string]$LogFile,
-  [string]$DropPath,
-  [int]$DropAfter = 300000,
-  [int]$DropCount = 0,
-  [string]$HugePath,
-  [switch]$NoCharset
+  [string]$DropPath,           # corta a mitad la descarga de las rutas que contengan este texto...
+  [int]$DropAfter = 300000,    # ...tras enviar estos bytes...
+  [int]$DropCount = 0,         # ...las primeras N veces
+  [switch]$NoCharset          # sirve .ps1 sin charset (prueba la decodificación de `irm`)
 )
 $ErrorActionPreference = 'Stop'
 $Root = (Resolve-Path -LiteralPath $Root).Path
@@ -53,7 +36,7 @@ while ($l.IsListening) {
     $res.Headers['Accept-Ranges'] = 'bytes'
 
     if ($req.HttpMethod -eq 'HEAD') {
-      $res.ContentLength64 = $(if ($HugePath -and $rel.Contains($HugePath)) { 999999999999 } else { $size })
+      $res.ContentLength64 = $size
       $res.Close(); continue
     }
 

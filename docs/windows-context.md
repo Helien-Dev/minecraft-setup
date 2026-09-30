@@ -1,3 +1,5 @@
+> Histórico: describe el formato anterior de R2 (tar.gz por perfil). El formato actual está en [publicar.md](publicar.md).
+
 # Contexto para la instancia de Claude en Windows
 
 Lee este archivo completo antes de tocar nada. Responde siempre en español
