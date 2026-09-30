@@ -107,7 +107,7 @@ try {
   $r2 = Install "$Work\t2b" @{ MODPACK = 'fakepack'; PROFILE = 'low' }
   Check ($r2.Code -eq 0 -and (Mods $r2 'fakepack').Count -eq 3) 'reinstala sin error y los mods siguen'
   Check ((Get-Content "$($r.Inst)\fakepack\options.txt") -eq 'MARCA-DEL-JUGADOR') 'options.txt del jugador no se pisó'
-  Check ((Get-Content "$($r.Inst)\fakepack\config\sub\options.txt") -eq 'DEL-PAQUETE-ANIDADO') 'el options.txt anidado del paquete sí se aplicó (patrón anclado)'
+  Check ((Get-Content "$($r.Inst)\fakepack\config\sub\options.txt") -eq 'VIEJO') 'la config que el jugador ya tenía no se pisó'
   Check (@(Instances $r2).Count -eq 1) 'sigue habiendo una sola instancia'
 
   Section '2c. Estado antiguo (sin modpack/profile): se reutiliza la instancia, no se crea otra'
@@ -164,11 +164,14 @@ try {
   $t4b = Install "$($t1.Base)" @{ MODPACK = 'fakepack'; PROFILE = 'low' }
   Check ($t4b.Code -eq 0 -and -not (Test-Path "$($t1.Inst)\fakepack\mods\delta-extra-1.0.jar")) 'delta (excluido en low) se borró'
 
-  Section '4c. Configuración nueva en R2: llega a quien ya tiene la instancia, sin pisar options.txt'
+  Section '4c. Configuración nueva en R2: kubejs y los config nuevos llegan; los config que ya tiene el jugador no se tocan'
   Copy-Item "$Work\r2\fakepack\base.zip", "$Work\r2\fakepack\manifest.json" $Work -Force   # se restauran al final (5b usa la ruta larga)
   $cfg = "$Work\cfg-v2"
   New-Item -ItemType Directory -Force "$cfg\config" | Out-Null
   Set-Content "$cfg\config\a.toml" 'version = 2'
+  Set-Content "$cfg\config\nuevo.toml" 'nuevo = 1'
+  New-Item -ItemType Directory -Force "$cfg\kubejs" | Out-Null
+  Set-Content "$cfg\kubejs\x.js" '// v2'
   Set-Content "$cfg\options.txt" 'DEL-PAQUETE'
   Remove-Item "$Work\r2\fakepack\base.zip"; Add-Type -AssemblyName System.IO.Compression.FileSystem
   [IO.Compression.ZipFile]::CreateFromDirectory($cfg, "$Work\r2\fakepack\base.zip")
@@ -176,7 +179,8 @@ try {
   $m.base.sha256 = (Sha "$Work\r2\fakepack\base.zip").ToLower(); $m.base.size = (Get-Item "$Work\r2\fakepack\base.zip").Length
   [IO.File]::WriteAllText("$Work\r2\fakepack\manifest.json", (ConvertTo-Json -InputObject $m -Depth 6), (New-Object Text.UTF8Encoding($false)))
   $t4c = Install "$($t1.Base)" @{ MODPACK = 'fakepack'; PROFILE = 'low' }
-  Check ($t4c.Code -eq 0 -and (Get-Content "$($t1.Inst)\fakepack\config\a.toml") -eq 'version = 2') 'config\a.toml se actualizó'
+  Check ($t4c.Code -eq 0 -and (Get-Content "$($t1.Inst)\fakepack\config\a.toml") -eq 'version = 1') 'config\a.toml existente no se tocó'
+  Check ((Test-Path "$($t1.Inst)\fakepack\config\nuevo.toml") -and (Get-Content "$($t1.Inst)\fakepack\kubejs\x.js") -eq '// v2') 'llegan config\nuevo.toml y kubejs actualizado'
   Check ((Get-Content "$($t1.Inst)\fakepack\options.txt") -eq 'MARCA-DEL-JUGADOR') 'options.txt del jugador intacto'
   $t4d = Install "$($t1.Base)" @{ MODPACK = 'fakepack'; PROFILE = 'low' }
   Check ($t4d.Out -notmatch 'Descargando la configuración') 'sin cambios en R2 no vuelve a bajar la configuración'

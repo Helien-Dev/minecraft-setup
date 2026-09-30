@@ -22,7 +22,8 @@ sk-portable.zip                             <- launcher de Windows (el de Linux 
   Si su configuración difiere, lleva un zip chico solo con los archivos distintos (`config`) y la lista de archivos
   del base que no instala (`skip`). Así hereda los cambios del standard, salvo en los archivos que redefine.
 - **Qué hace el instalador:** vuelve a aplicar el base (y la configuración del perfil) solo cuando cambia su sha256.
-  Nunca pisa `options.txt` ni la lista de servidores del jugador. Deja `mods/` igual al perfil y verifica que no
+  Nunca pisa `options.txt`, la lista de servidores ni ningún archivo de `config/` que el jugador ya tenga (solo agrega
+  los nuevos); `kubejs/` y el resto sí se actualizan. Deja `mods/` igual al perfil y verifica que no
   quede ningún mod excluido.
 - **Base determinista:** si nada cambió, el sha256 no cambia y nadie vuelve a bajar la configuración.
 
@@ -47,6 +48,10 @@ Otro remote o bucket: `R2_BUCKET=otro:bucket ./scripts/publish.py ...`.
    versión, se niega a publicar y te dice cuál: actualiza su nombre en `profiles/<prefix>/<perfil>.json` y repite.
 4. Muestra los mods nuevos, actualizados y quitados, y si cambió el base. Después de confirmar, sube solo esos
    jars, luego el base (si cambió) y el manifest al final.
+
+> **Cambios en `config/`:** a quien ya tiene la instancia solo le llegan los archivos de config **nuevos**. Si cambias
+> uno que ya existía y el servidor lo necesita, avisa a los jugadores que borren ese archivo antes de volver a correr
+> el instalador (o muévelo a `kubejs/`/`defaultconfigs/` si el mod lo permite).
 
 ## Publicar un perfil derivado
 

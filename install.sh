@@ -174,13 +174,18 @@ def fetch_verified(url, meta, dest):
     return dest
 
 
+def protected_files():
+    # Lo que el jugador ya tiene y nunca se pisa: su config/ completa y sus opciones y servidores.
+    config_dir = os.path.join(instance_dir, "config")
+    found = {os.path.relpath(os.path.join(d, f), instance_dir).replace(os.sep, "/") for d, _, fs in os.walk(config_dir) for f in fs}
+    return found | {n for n in PERSONAL if os.path.exists(os.path.join(instance_dir, n))}
+
+
 def extract(zip_path, skip):
-    # Nunca pisa los archivos personales que el jugador ya tiene (opciones, servidores).
     with zipfile.ZipFile(zip_path) as zf:
         for info in zf.infolist():
             dest = os.path.join(instance_dir, *info.filename.split("/"))
-            personal = info.filename in PERSONAL and os.path.exists(dest)
-            if info.is_dir() or info.filename in skip or personal or ".." in info.filename.split("/"):
+            if info.is_dir() or info.filename in skip or ".." in info.filename.split("/"):
                 continue
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             with zf.open(info) as src, open(dest, "wb") as out:
@@ -209,10 +214,11 @@ mods_dir = os.path.join(instance_dir, "mods")
 config = variant.get("config", {}).get("sha256")
 if state.get("base") != manifest["base"]["sha256"] or state.get("config") != config or not os.path.isdir(mods_dir):
     print("[*] Descargando la configuración del modpack...", flush=True)
-    extract(fetch_verified(pack_url + "base.zip", manifest["base"], os.path.join(work_dir, "base.zip")), set(variant["skip"]))
+    keep = protected_files()  # antes de extraer: la configuración propia del perfil sí pisa al base recién extraído
+    extract(fetch_verified(pack_url + "base.zip", manifest["base"], os.path.join(work_dir, "base.zip")), keep | set(variant["skip"]))
     if config:
-        extract(fetch_verified(pack_url + profile_file[:-5] + ".zip", variant["config"], os.path.join(work_dir, "config.zip")), set())
-    print("[OK] Configuración al día (tus partidas y opciones no se tocaron).")
+        extract(fetch_verified(pack_url + profile_file[:-5] + ".zip", variant["config"], os.path.join(work_dir, "config.zip")), keep)
+    print("[OK] Configuración al día (tu config/, partidas y opciones no se tocaron).")
 os.makedirs(mods_dir, exist_ok=True)
 
 

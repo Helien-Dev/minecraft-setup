@@ -145,16 +145,25 @@ try {
     throw 'Instalación cancelada.'
   }
 
-  # Nunca pisa los archivos personales que el jugador ya tiene (opciones, servidores).
+  # Lo que el jugador ya tiene y nunca se pisa: su config\ completa y sus opciones y servidores.
+  function Get-ProtectedFiles {
+    $set = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $configDir = Join-Path $InstanceDir 'config'
+    if (Test-Path -LiteralPath $configDir) {
+      foreach ($f in Get-ChildItem -LiteralPath $configDir -Recurse -File -Force) { [void]$set.Add('config/' + $f.FullName.Substring($configDir.Length + 1).Replace('\', '/')) }
+    }
+    foreach ($n in $Personal) { if (Test-Path -LiteralPath (Join-Path $InstanceDir $n)) { [void]$set.Add($n) } }
+    , $set
+  }
+
   function Expand-Config($zipFile, $skip) {
     $zip = [IO.Compression.ZipFile]::OpenRead($zipFile)
     try {
       $entries = @($zip.Entries | Where-Object { $_.Name })   # sin las entradas de carpeta
       Assert-PathLength $InstanceDir @($entries | ForEach-Object { $_.FullName })
       foreach ($e in $entries) {
+        if ($skip.Contains($e.FullName) -or ($e.FullName -split '/') -contains '..') { continue }
         $dest = Join-Path $InstanceDir ($e.FullName -replace '/', '\')
-        if ($skip -contains $e.FullName -or ($e.FullName -split '/') -contains '..') { continue }
-        if ($Personal -contains $e.FullName -and (Test-Path -LiteralPath $dest)) { continue }
         [void][IO.Directory]::CreateDirectory((Split-Path -Parent $dest))
         [IO.Compression.ZipFileExtensions]::ExtractToFile($e, $dest, $true)
       }
@@ -312,9 +321,13 @@ try {
 
   if ($needBase) {
     Info 'Descargando la configuración del modpack...'
-    Expand-Config (Get-Verified 'base.zip' $manifest.base) @(if ($variant) { $variant.skip })
-    if ($config) { Expand-Config (Get-Verified "profiles/$($prof.id).zip" $config) @() }
-    Ok 'Configuración al día (tus partidas y opciones no se tocaron).'
+    $keep = Get-ProtectedFiles   # antes de extraer: la configuración propia del perfil sí pisa al base recién extraído
+    $skip = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $skip.UnionWith($keep)
+    if ($variant) { foreach ($n in $variant.skip) { [void]$skip.Add($n) } }
+    Expand-Config (Get-Verified 'base.zip' $manifest.base) $skip
+    if ($config) { Expand-Config (Get-Verified "profiles/$($prof.id).zip" $config) $keep }
+    Ok 'Configuración al día (tu config\, partidas y opciones no se tocaron).'
   }
   New-Item -ItemType Directory -Force -Path $ModsDir | Out-Null
 

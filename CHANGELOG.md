@@ -12,6 +12,8 @@
   agrega la instancia a ese, sin instalar el portable.
 - **Windows:** respeta la carpeta de instancias del SKLauncher oficial aunque esté en otra unidad (la deduce de
   `instances.json` y la propone), y reutiliza la ruta de una instancia ya registrada.
+- **config/ del jugador intocable:** al actualizar, los archivos de `config/` que ya existen no se reemplazan; solo
+  llegan los nuevos. `kubejs/` y el resto del base sí se actualizan.
 - **Launcher de Linux:** se baja del beta oficial en GitHub (4.0.54).
 - **`scripts/publish.py`** reemplaza a `package-instance.sh`: `standard`, `profile`, `site` y `clean`.
 - **Mods prohibidos por modpack** (`banned` en `catalog.json`): NeoCozy prohíbe HT's TreeChop.

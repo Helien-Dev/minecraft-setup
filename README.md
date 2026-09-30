@@ -15,7 +15,8 @@ irm https://minecraft-data.alvaroavila.dev/install.ps1 | iex          # Windows 
 1. Pregunta qué modpack quieres y, si tiene varios perfiles (por ejemplo, Gama Alta y Gama Baja), cuál.
 2. Instala SKLauncher si hace falta. Hay uno solo por computadora; cada modpack es una instancia dentro de él.
 3. Instala o actualiza la instancia:
-   - la configuración del modpack (`config/`, `kubejs/`, resourcepacks...) se baja solo si cambió;
+   - la configuración del modpack (`config/`, `kubejs/`, resourcepacks...) se baja solo si cambió, y los archivos de
+     `config/` que ya tienes nunca se reemplazan: así no pierdes tus ajustes (solo llegan los archivos nuevos);
    - de los mods, baja solo los nuevos o actualizados y borra los que el modpack ya no usa.
 4. Registra la instancia en SKLauncher: al abrirlo, ya aparece.
 

@@ -58,19 +58,21 @@ cp "$SRC/mods/x-client.jar" "$INST/mods/"; install performance
 check '[ ! -e "$INST/mods/x-client.jar" ]' "x-client.jar se borró"
 
 echo "== perfil con configuración propia"
-cp -r "$SRC" "$PERF"; rm "$PERF/mods/x-client.jar" "$PERF/options.txt"; echo "perf = 1" > "$PERF/config/perf.toml"
+cp -r "$SRC" "$PERF"; rm "$PERF/mods/x-client.jar" "$PERF/options.txt"; echo "perf = 1" > "$PERF/config/perf.toml"; echo "v = perf" > "$PERF/config/a.toml"
 publish profile neocozy performance "$PERF"
 check '[ -f "$R2_BUCKET/neocozy/profiles/performance.zip" ] && grep -q options.txt "$R2_BUCKET/neocozy/profiles/performance.json"' "config propia publicada y options.txt en skip"
 install performance fresh
-check 'grep -q "perf = 1" "$WORK/fresh/.sklauncher/instances/neocozy/config/perf.toml" && [ ! -e "$WORK/fresh/.sklauncher/instances/neocozy/options.txt" ]' "instalación nueva: con perf.toml y sin el options.txt del standard"
+FRESH="$WORK/fresh/.sklauncher/instances/neocozy"
+check 'grep -q "perf = 1" "$FRESH/config/perf.toml" && grep -q "v = perf" "$FRESH/config/a.toml" && [ ! -e "$FRESH/options.txt" ]' "instalación nueva: config del perfil encima del base y sin el options.txt del standard"
 install performance
-check '[ -e "$INST/config/perf.toml" ] && [ -e "$INST/options.txt" ]' "instalación existente: recibe perf.toml y conserva su options.txt"
+check '[ -e "$INST/config/perf.toml" ] && grep -q "v = 1" "$INST/config/a.toml" && [ -e "$INST/options.txt" ]' "instalación existente: recibe perf.toml nuevo y no toca su a.toml ni su options.txt"
 
 echo "== config y mod nuevos en el standard"
-echo "v = 2" > "$SRC/config/a.toml"; echo jugador > "$INST/options.txt"; jar b.jar; rm "$SRC/mods/a.jar"
+echo "v = 2" > "$SRC/config/a.toml"; echo "nuevo" > "$SRC/config/b.toml"; mkdir -p "$SRC/kubejs"; echo "k2" > "$SRC/kubejs/k.js"
+echo jugador > "$INST/options.txt"; jar b.jar; rm "$SRC/mods/a.jar"
 publish standard neocozy "$SRC"
 : > "$WORK/server.log"; install performance
-check 'grep -q "v = 2" "$INST/config/a.toml" && grep -q jugador "$INST/options.txt" && [ -e "$INST/config/perf.toml" ]' "config nueva, options.txt del jugador y perf.toml intactos"
+check 'grep -q "v = 1" "$INST/config/a.toml" && grep -q nuevo "$INST/config/b.toml" && grep -q k2 "$INST/kubejs/k.js" && grep -q jugador "$INST/options.txt"' "config existente intacta; llegan config nueva y kubejs"
 check '[ $(grep -c "/mods/" "$WORK/server.log") -eq 1 ] && [ ! -e "$INST/mods/a.jar" ]' "solo bajó b.jar y borró a.jar"
 
 echo "== estado de una versión anterior (sin base)"
