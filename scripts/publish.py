@@ -132,6 +132,17 @@ def check_banned(pack, jars):
         die(f"{pack['name']} prohíbe estos mods: {', '.join(hits)}")
 
 
+def check_duplicates(jars):
+    # Dos versiones del mismo mod en mods/ hacen que el juego no arranque.
+    owners = {}
+    for jar in jars:
+        for mod_id in mod_ids(jar):
+            owners.setdefault(mod_id, []).append(jar.name)
+    dups = [f"{i}: {', '.join(names)}" for i, names in sorted(owners.items()) if len(names) > 1]
+    if dups:
+        die("hay mods repetidos (deja solo una versión de cada uno):\n  " + "\n  ".join(dups))
+
+
 def zip_hashes(path):
     with zipfile.ZipFile(path) as zf:
         return {n: hashlib.sha256(zf.read(n)).hexdigest() for n in zf.namelist() if not n.endswith("/")}
@@ -164,6 +175,7 @@ def cmd_standard(args):
     print(f"Calculando hashes de {instance / 'mods'}...")
     mods = local_mods(instance / "mods")
     check_banned(pack, [instance / "mods" / n for n in mods])
+    check_duplicates([instance / "mods" / n for n in mods])
     check_profiles(pack, mods)
     old = read_r2_json(f"{prefix}/manifest.json") or {"mods": {}}
     added = sorted(set(mods) - set(old["mods"]))
@@ -232,6 +244,7 @@ def cmd_profile(args):
         profile["exclude"] = sorted(set(standard["mods"]) - names)
         profile["include"] = {n: mods[n] for n in extra}
         check_banned(pack, [source / "mods" / n for n in extra])
+        check_duplicates([source / "mods" / n for n in mods])
 
         path = profile_path(pack, args.profile)
         old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"exclude": [], "include": {}, "skip": []}

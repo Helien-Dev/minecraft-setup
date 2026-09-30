@@ -16,4 +16,6 @@
 - **NeoCozy:** 11 mods nuevos (Apothic Attributes, Puzzles Lib, Wild Battle API, Cobblemon Size Variation,
   FallingTree, Overweight Farming, Cobblemon Battle Tower, Infuser Apotheosis Compat, Extra Move Animations,
   Catch Indicator y CullLeaves).
+- **NeoCozy sin duplicados:** se quitaron Apothic Attributes 2.10.1 y Puzzles Lib 21.1.60 (quedan 2.11.0 y 21.1.62).
+  `publish.py` ahora se niega a publicar si dos jars declaran el mismo `modId`.
 - **Pruebas:** `scripts/test-linux.sh` (de punta a punta, sin internet) y las de Windows adaptadas al formato nuevo.

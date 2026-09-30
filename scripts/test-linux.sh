@@ -88,6 +88,11 @@ python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1], 'w').writestr('MET
 check '! publish standard neocozy "$SRC" && grep -q "prohíbe" "$WORK/publish.log"' "publish se niega aunque el jar se llame distinto"
 rm "$SRC/mods/arboles.jar"
 
+echo "== mod repetido"
+for v in 1 2; do python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1], 'w').writestr('META-INF/neoforge.mods.toml', '[[mods]]\nmodId = \"libx\"')" "$SRC/mods/libx-$v.jar"; done
+check '! publish standard neocozy "$SRC" && grep -q "repetidos" "$WORK/publish.log"' "publish se niega con dos versiones del mismo mod"
+rm "$SRC/mods/libx-"*.jar
+
 echo "== limpieza"
 publish clean; check '[ ! -e "$R2_BUCKET/neocozy/mods/a.jar" ] && [ -e "$R2_BUCKET/neocozy/mods/b.jar" ] && [ -e "$R2_BUCKET/neocozy/profiles/performance.zip" ]' "borró a.jar huérfano y conservó el resto"
 
