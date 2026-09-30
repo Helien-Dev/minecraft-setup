@@ -8,6 +8,8 @@
 - **Instaladores:** un solo proceso para instalar y actualizar. La configuración (`config/`, `kubejs/`...) llega a
   todos cada vez que cambia, los mods se bajan en paralelo y se verifican por sha256, y el exclude se verifica al
   instalar.
+- **Windows:** detecta el SKLauncher oficial aunque esté instalado en otra carpeta (por su acceso del Menú Inicio) y
+  agrega la instancia a ese, sin instalar el portable.
 - **Launcher de Linux:** se baja del beta oficial en GitHub (4.0.54).
 - **`scripts/publish.py`** reemplaza a `package-instance.sh`: `standard`, `profile`, `site` y `clean`.
 - **Mods prohibidos por modpack** (`banned` en `catalog.json`): NeoCozy prohíbe HT's TreeChop.

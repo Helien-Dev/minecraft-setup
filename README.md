@@ -45,8 +45,8 @@ Windows, `DESKTOP_SHORTCUT=1` (acceso directo en el Escritorio).
 ## Requisitos
 
 - **Linux** x86_64 con `curl` y `python3`. SKLauncher es un AppImage y necesita FUSE (el script avisa si falta).
-- **Windows** 10 (1803 o posterior) u 11, sin permisos de administrador. Si ya tienes el SKLauncher oficial, la
-  instancia se agrega a ese; si no, se instala un SKLauncher portable ("SKLauncher Portable" en el Menú Inicio).
+- **Windows** 10 (1803 o posterior) u 11, sin permisos de administrador. Si ya tienes el SKLauncher oficial (en
+  cualquier carpeta), la instancia se agrega a ese; si no, se instala un SKLauncher portable ("SKLauncher Portable" en el Menú Inicio).
 - La primera vez que juegas una instancia, SKLauncher descarga Minecraft, NeoForge y Java (~1 GB).
 
 ## Para quien mantiene los modpacks

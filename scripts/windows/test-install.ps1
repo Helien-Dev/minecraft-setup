@@ -215,6 +215,22 @@ try {
   Stop-Process -Id $off.Id -Force
   Check ($t6b.Code -eq 0) 'un sklauncher.exe de OTRA ruta (el oficial) no bloquea'
 
+  Section '6b. SKLauncher oficial instalado en otra ruta: la instancia va a ese, sin portable'
+  $c = "$Work\t6c"
+  $exe = "$c\Juegos\SKlauncher\sklauncher.exe"
+  New-Item -ItemType Directory -Force (Split-Path $exe), "$c\Roaming\Microsoft\Windows\Start Menu\Programs" | Out-Null
+  Copy-Item "$env:SystemRoot\System32\ping.exe" $exe -Force
+  $l = (New-Object -ComObject WScript.Shell).CreateShortcut("$c\Roaming\Microsoft\Windows\Start Menu\Programs\SKlauncher.lnk"); $l.TargetPath = $exe; $l.Save()
+  $t6c = Install $c @{ MODPACK = 'fakepack'; PROFILE = 'low' }
+  Check ($t6c.Code -eq 0 -and $t6c.Out -match [regex]::Escape("$c\Juegos\SKlauncher")) 'detecta el oficial en la ruta personalizada'
+  Check ((Mods ([pscustomobject]@{ Inst = "$c\Roaming\.sklauncher\instances" }) 'fakepack').Count -eq 3) 'la instancia queda en %APPDATA%\.sklauncher (la del oficial)'
+  Check (-not (Test-Path "$($t6c.L)\sklauncher.exe")) 'no instaló el portable'
+  $run = Start-Process $exe -ArgumentList '-t', '127.0.0.1' -WindowStyle Hidden -PassThru
+  Start-Sleep 1
+  $t6d = Install $c @{ MODPACK = 'fakepack'; PROFILE = 'low' }
+  Stop-Process -Id $run.Id -Force
+  Check ($t6d.Code -eq 1 -and $t6d.Out -match 'bandeja') 'con ese oficial abierto, aborta'
+
   Section '7. Descarga interrumpida: al reintentar se recupera'
   Start-Srv @('-DropPath', 'fakepack/base.zip', '-DropAfter', '1000000', '-DropCount', '10')
   $t7 = Install "$Work\t7" @{ MODPACK = 'fakepack'; PROFILE = 'high' }

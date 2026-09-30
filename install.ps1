@@ -22,9 +22,21 @@ try {
     if (-not (Test-Path -LiteralPath $exe)) { throw "Falta $exe. Necesitas Windows 10 (1803 o posterior) o Windows 11." }
   }
 
+  # El oficial puede estar en cualquier ruta: si no está en la de siempre, se sigue su acceso del Menú Inicio (el del portable apunta a un .bat).
+  function Find-OfficialExe {
+    $default = Join-Path $env:LOCALAPPDATA 'Programs\sklauncher\sklauncher.exe'
+    if (Test-Path -LiteralPath $default) { return $default }
+    $menus = (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'), (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs')
+    $shell = New-Object -ComObject WScript.Shell
+    foreach ($lnk in Get-ChildItem -LiteralPath $menus -Filter '*sklauncher*.lnk' -Recurse -ErrorAction SilentlyContinue) {
+      $target = $shell.CreateShortcut($lnk.FullName).TargetPath
+      if ($target -like '*\sklauncher.exe' -and (Test-Path -LiteralPath $target)) { return $target }
+    }
+  }
+
   # Con el SKLauncher oficial instalado, la instancia va a ese; si no, se usa (o instala) el portable.
-  $OfficialExe = Join-Path $env:LOCALAPPDATA 'Programs\sklauncher\sklauncher.exe'
-  $UseOfficial = Test-Path -LiteralPath $OfficialExe
+  $OfficialExe = Find-OfficialExe
+  $UseOfficial = [bool]$OfficialExe
   if ($UseOfficial) {
     $LauncherDir = Split-Path -Parent $OfficialExe
     $SklDir      = Join-Path $env:APPDATA '.sklauncher'
