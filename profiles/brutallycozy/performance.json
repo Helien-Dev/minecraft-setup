@@ -1,0 +1,17 @@
+{
+  "exclude": [
+    "colorwheel-neoforge-1.2.9+mc1.21.1.jar",
+    "colorwheel_patcher-neoforge-1.0.5+mc1.21.1.jar",
+    "iris-neoforge-1.8.14-beta.1+mc1.21.1.jar"
+  ],
+  "include": {},
+  "skip": [
+    "profiles/performance/config/defaultoptions/options.txt",
+    "profiles/performance/config/sodium-options.json",
+    "profiles/performance/options.txt"
+  ],
+  "config": {
+    "sha256": "7d0414d2f64b46bda88856a1fd4fe2a2e21e6e05c506d701ad8995864d9b681b",
+    "size": 37522
+  }
+}

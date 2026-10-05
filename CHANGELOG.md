@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-04
+
+- **Brutally Cozy** en el catálogo (`brutally-cozy-atm`, solo standard). `publish.py` excluye `.git` y `.nl_password`
+  (contraseña de NedoLogin) del base.
+
 ## 2026-09-29
 
 - **Nuevo formato en R2:** cada modpack tiene un `base.zip` (la instancia sin mods), un `manifest.json` y sus mods

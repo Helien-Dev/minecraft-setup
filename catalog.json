@@ -49,6 +49,22 @@
         {"id": "standard",    "label": "Standard"},
         {"id": "performance", "label": "Performance"}
       ]
+    },
+    {
+      "id": "brutally-cozy-atm",
+      "name": "Brutally Cozy",
+      "type": "custom",
+      "icon": "Furnace_On",
+      "minecraft": "1.21.1",
+      "loader": "neoforge",
+      "loaderVersion": "21.1.249",
+      "versionId": "1.21.1-neoforge-21.1.249",
+      "memoryMax": 10240,
+      "prefix": "brutallycozy",
+      "profiles": [
+        {"id": "standard",    "label": "Standard"},
+        {"id": "performance", "label": "Performance"}
+      ]
     }
   ]
 }

@@ -22,6 +22,7 @@ ANYWHERE = {
     "saves", "screenshots", "logs", "crash-reports", "servers.dat", "servers.dat_old", "command_history.txt",
     "downloads", "bin", "natives", ".mixin.out", "fancymenu_data", "dynamic-resource-pack-cache",
     "dynamic-data-pack-cache", "server-resource-packs", "observable_announce", "ESM", "search_index",
+    ".git", ".nl_password",
 }
 # Igual, pero solo en la raíz de la instancia (hay carpetas homónimas más adentro, p. ej. kubejs/data/gtceu).
 AT_ROOT = [
