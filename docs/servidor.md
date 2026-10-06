@@ -7,7 +7,7 @@ deriva de la del cliente: es su propia base, formada por los archivos versionado
 
 ```
 <prefix>/server/manifest.json   <- tag y commit, versión de NeoForge, base y lista de mods ya resuelta (nombre + sha256)
-<prefix>/server/base.zip        <- los archivos versionados del repo del server (git ls-files)
+<prefix>/server/base.zip        <- el contenido del commit del repo del server (git archive)
 ```
 
 ## Publicar
@@ -18,7 +18,8 @@ deriva de la del cliente: es su propia base, formada por los archivos versionado
 ```
 
 Se niega a publicar si:
-- el repo del server (o la instancia del cliente, si está en git) tiene cambios sin commit, el commit actual no tiene
+- el repo del server (o la instancia del cliente, si está en git) tiene cambios sin commit (salvo la fecha que Java
+  reescribe en los `.properties`), el commit actual no tiene
   tag, o `mods/` no coincide con su `mods.lock`;
 - cliente y server están en tags distintos;
 - la instancia del cliente no es el standard publicado en R2;

@@ -99,12 +99,19 @@ def git(path, *args):
     return subprocess.run(["git", "-C", str(path), *args], capture_output=True, text=True)
 
 
+def real_change(path, name):
+    # Java reescribe la fecha de cabecera de los .properties en cada arranque: eso no es un cambio.
+    lines = [l for l in git(path, "diff", "HEAD", "-U0", "--", name).stdout.splitlines() if l[:1] in "+-" and l[:3] not in ("+++", "---")]
+    return any(not (l[1:].startswith("#") and l.rstrip()[-4:].isdigit()) for l in lines)
+
+
 def git_release(path):
     # Una carpeta versionada en git solo se publica desde un tag limpio: lo publicado se reconstruye desde GitHub.
     if git(path, "rev-parse").returncode != 0:
         return None
-    if git(path, "status", "--porcelain", "--untracked-files=no").stdout.strip():
-        die(f"{path} tiene cambios sin commit: publica solo desde un tag limpio")
+    dirty = [f for f in git(path, "diff", "HEAD", "--name-only").stdout.splitlines() if real_change(path, f)]
+    if dirty:
+        die(f"{path} tiene cambios sin commit (publica solo desde un tag limpio):\n  " + "\n  ".join(dirty))
     tag = git(path, "describe", "--exact-match", "--tags", "HEAD")
     if tag.returncode != 0:
         die(f"{path}: el commit actual no tiene tag (vX.Y.Z); etiqueta la versión antes de publicar")
@@ -117,8 +124,11 @@ def git_release(path):
     return {"tag": tag.stdout.strip(), "commit": git(path, "rev-parse", "--short", "HEAD").stdout.strip()}
 
 
-def tracked_files(path):
-    return {n: Path(path) / n for n in git(path, "ls-files", "-z").stdout.split("\0") if n and (Path(path) / n).is_file()}
+def committed_files(path, dest):
+    # Contenido del commit, no del disco: lo publicado es exactamente lo versionado.
+    archive = subprocess.run(["git", "-C", str(path), "archive", "--format=tar", "HEAD"], capture_output=True, check=True).stdout
+    subprocess.run(["tar", "-x", "-C", str(dest)], input=archive, check=True)
+    return {p.relative_to(dest).as_posix(): p for p in Path(dest).rglob("*") if p.is_file()}
 
 
 def instance_files(instance):
@@ -332,7 +342,9 @@ def cmd_server(args):
     removed = sorted(set(old["mods"]) - set(mods))
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp) / "base.zip"
-        files = tracked_files(server)
+        tree = Path(tmp) / "tree"
+        tree.mkdir()
+        files = committed_files(server, tree)
         base_meta = build_zip(files, base)
         base_changed = old.get("base", {}).get("sha256") != base_meta["sha256"]
         print(f"\n{pack['name']} (server {release['tag']}) = standard - {len(profile['exclude'])} mods + {len(profile['include'])} mods = {len(mods)} mods")
