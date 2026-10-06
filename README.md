@@ -55,5 +55,6 @@ Windows, `DESKTOP_SHORTCUT=1` (acceso directo en el Escritorio) y `SKL_INSTANCES
 ## Para quien mantiene los modpacks
 
 - [Publicar modpacks, perfiles y el instalador](docs/publicar.md)
+- [Publicar e instalar el servidor](docs/servidor.md)
 - [Hallazgos de la versión de Windows](docs/windows-findings.md)
 - [Seguimiento de mods del servidor](data/README.md)

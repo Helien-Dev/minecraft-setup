@@ -32,6 +32,9 @@ qué hay publicado. Todo cambio de comportamiento se aplica a **ambos** instalad
 - Cualquier otro perfil instala el standard y luego **quita y/o agrega mods** según `profiles/<prefix>/<perfil>.json`;
   si su configuración difiere, redefine solo esos archivos (`config`) y omite los que no quiere (`skip`).
   Nunca tiene paquete propio.
+- **Excepción: el server** (`docs/servidor.md`). Sus mods derivan del standard (exclude/include, mismas versiones), pero
+  su base es propia: los archivos versionados de su repo, aplicados completos. Solo Linux (`install-server.sh`).
+- Una carpeta versionada en git (instancia o server) solo se publica desde un tag limpio, con `mods/` igual a `mods.lock`.
 - Todo se publica con `scripts/publish.py` (ver `docs/publicar.md`).
 
 ### 6. Espacio en R2

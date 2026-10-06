@@ -68,13 +68,20 @@ a `profiles/<prefix>/<perfil>.zip` y los que no tiene, a `skip`. Genera `profile
 y sube los jars que agrega. Haz commit de ese archivo: es la
 fuente de verdad del perfil. Un perfil nuevo hay que agregarlo también a `catalog.json`.
 
+## Publicar el servidor
+
+Ver [servidor.md](servidor.md): `publish.py server` después del standard, desde el mismo tag.
+
+> Si la instancia del cliente está en git, `publish.py standard` también exige un tag limpio y que `mods/` coincida con
+> su `mods.lock`; guarda el tag y el commit en el manifest.
+
 ## Publicar el instalador y el catálogo
 
 ```bash
 ./scripts/publish.py site
 ```
 
-Antes de subir, comprueba que todo lo que lista el catálogo ya esté en R2. Sube `install.sh` e `install.ps1` con
+Antes de subir, comprueba que todo lo que lista el catálogo ya esté en R2. Sube `install.sh`, `install.ps1` e `install-server.sh` con
 `charset=utf-8` (sin eso, `irm` rompe los acentos) y `catalog.json` al final. Un modpack nuevo se publica así: primero
 `standard`, después `profile` (si tiene), y al final `site`.
 

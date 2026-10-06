@@ -95,6 +95,32 @@ def local_mods(mods_dir):
     return {p.name: file_meta(p) for p in sorted(mods_dir.glob("*.jar"))}
 
 
+def git(path, *args):
+    return subprocess.run(["git", "-C", str(path), *args], capture_output=True, text=True)
+
+
+def git_release(path):
+    # Una carpeta versionada en git solo se publica desde un tag limpio: lo publicado se reconstruye desde GitHub.
+    if git(path, "rev-parse").returncode != 0:
+        return None
+    if git(path, "status", "--porcelain", "--untracked-files=no").stdout.strip():
+        die(f"{path} tiene cambios sin commit: publica solo desde un tag limpio")
+    tag = git(path, "describe", "--exact-match", "--tags", "HEAD")
+    if tag.returncode != 0:
+        die(f"{path}: el commit actual no tiene tag (vX.Y.Z); etiqueta la versión antes de publicar")
+    lock = Path(path) / "mods.lock"
+    if lock.exists():
+        locked = dict(line.split(None, 1)[::-1] for line in lock.read_text(encoding="utf-8").splitlines() if line.strip())
+        actual = {p.name: hashlib.sha1(p.read_bytes()).hexdigest() for p in (Path(path) / "mods").glob("*.jar")}
+        if {k.strip(): v for k, v in locked.items()} != actual:
+            die(f"{path}/mods no coincide con mods.lock del tag: los jars publicados tienen que ser los versionados")
+    return {"tag": tag.stdout.strip(), "commit": git(path, "rev-parse", "--short", "HEAD").stdout.strip()}
+
+
+def tracked_files(path):
+    return {n: Path(path) / n for n in git(path, "ls-files", "-z").stdout.split("\0") if n and (Path(path) / n).is_file()}
+
+
 def instance_files(instance):
     def excluded(rel):
         return any(part in ANYWHERE for part in rel.parts) or any(fnmatch(rel.parts[0], p) for p in AT_ROOT)
@@ -173,6 +199,7 @@ def check_profiles(pack, mods):
 def cmd_standard(args):
     pack = load_pack(args.pack)
     prefix, instance = pack["prefix"], Path(args.instance).expanduser()
+    release = git_release(instance)
     print(f"Calculando hashes de {instance / 'mods'}...")
     mods = local_mods(instance / "mods")
     check_banned(pack, [instance / "mods" / n for n in mods])
@@ -195,7 +222,7 @@ def cmd_standard(args):
         print_list("  Actualizados", updated)
         print_list("  Quitados", removed)
         print(f"  Base: {'cambió, se publica' if base_changed else 'sin cambios'}")
-        if not (added or updated or removed or base_changed):
+        if not (added or updated or removed or base_changed or (release and old.get("release") != release)):
             print("\nNada que publicar.")
             return
         confirm()
@@ -209,9 +236,11 @@ def cmd_standard(args):
             upload(base, f"{prefix}/base.zip")
         manifest = Path(tmp) / "manifest.json"
         now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        write_json(manifest, {"generatedAt": now, "base": base_meta, "mods": mods})
+        write_json(manifest, {"generatedAt": now, **({"release": release} if release else {}), "base": base_meta, "mods": mods})
         upload(manifest, f"{prefix}/manifest.json")  # al final: publica el cambio cuando todo lo que referencia ya existe
     print("\nListo. Quienes ya lo tienen lo reciben al volver a correr el instalador.")
+    if read_r2_json(f"{prefix}/server/manifest.json") and (added or updated or removed):
+        print(f"Cambiaron mods: publica también el server (`publish.py server {args.pack} <server> {args.instance}`).")
 
 
 def cmd_profile(args):
@@ -272,6 +301,65 @@ def cmd_profile(args):
     print(f"\nListo. {path.relative_to(ROOT)} actualizado: haz commit.")
 
 
+def cmd_server(args):
+    # Mods: el standard menos exclude más include (una sola fuente, mismas versiones). Base: los archivos versionados del server.
+    pack = load_pack(args.pack)
+    prefix, server, client = pack["prefix"], Path(args.server).expanduser(), Path(args.client).expanduser()
+    release = git_release(server) or die(f"{server} no está en git: la base del server son sus archivos versionados")
+    client_release = git_release(client)
+    if client_release and client_release["tag"] != release["tag"]:
+        die(f"el cliente está en {client_release['tag']} y el server en {release['tag']}: publica ambos desde la misma versión")
+    standard = read_r2_json(f"{prefix}/manifest.json") or die(f"{prefix}/manifest.json no está en R2: publica primero el standard")
+    print(f"Calculando hashes de {client / 'mods'} y {server / 'mods'}...")
+    client_mods = local_mods(client / "mods")
+    if {n: m["sha256"] for n, m in client_mods.items()} != {n: m["sha256"] for n, m in standard["mods"].items()}:
+        die("la instancia del cliente no es el standard publicado: publica primero el standard desde el mismo tag")
+    mods = local_mods(server / "mods")
+    jars = [server / "mods" / n for n in mods]
+    check_banned(pack, jars)
+    check_duplicates(jars)
+    same = {n for n in mods if n in client_mods and client_mods[n]["sha256"] == mods[n]["sha256"]}
+    profile = {"exclude": sorted(set(client_mods) - same), "include": {n: mods[n] for n in sorted(set(mods) - same)}}
+    # Un mod de ambos lados tiene que ser el mismo jar: el mismo modId con otro jar es una versión desalineada.
+    excluded_ids = {i: n for n in profile["exclude"] for i in mod_ids(client / "mods" / n)}
+    clashes = sorted({f"{i}: cliente {excluded_ids[i]} / server {n}" for n in profile["include"] for i in mod_ids(server / "mods" / n) if i in excluded_ids})
+    if clashes:
+        die("mismo mod con distinto jar en cliente y server (alinea las versiones):\n  " + "\n  ".join(clashes))
+
+    old = read_r2_json(f"{prefix}/server/manifest.json") or {"mods": {}}
+    added = sorted(set(mods) - set(old["mods"]))
+    updated = sorted(n for n in mods if n in old["mods"] and old["mods"][n]["sha256"] != mods[n]["sha256"])
+    removed = sorted(set(old["mods"]) - set(mods))
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp) / "base.zip"
+        files = tracked_files(server)
+        base_meta = build_zip(files, base)
+        base_changed = old.get("base", {}).get("sha256") != base_meta["sha256"]
+        print(f"\n{pack['name']} (server {release['tag']}) = standard - {len(profile['exclude'])} mods + {len(profile['include'])} mods = {len(mods)} mods")
+        print(f"  Base: {len(files)} archivos versionados ({base_meta['size'] / 1e6:.1f} MB), {'cambió' if base_changed else 'sin cambios'}")
+        print_list("  Nuevos", added)
+        print_list("  Actualizados", updated)
+        print_list("  Quitados", removed)
+        if not (added or updated or removed or base_changed or old.get("release") != release):
+            print("\nNada que publicar.")
+            return
+        confirm()
+
+        for name in profile["include"]:
+            upload(server / "mods" / name, f"{prefix}/mods/{name}")
+        if base_changed:
+            upload(base, f"{prefix}/server/base.zip")
+        path = profile_path(pack, "server")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_json(path, profile)
+        manifest = Path(tmp) / "manifest.json"
+        now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        # Lista de mods ya resuelta: un standard publicado después no cambia lo que instala el server.
+        write_json(manifest, {"generatedAt": now, "release": release, "loaderVersion": pack["loaderVersion"], "base": base_meta, "mods": mods})
+        upload(manifest, f"{prefix}/server/manifest.json")
+    print(f"\nListo. {path.relative_to(ROOT)} actualizado: haz commit. En el server: install-server.sh (docs/servidor.md).")
+
+
 def cmd_site(args):
     for pack in load_catalog()["modpacks"]:
         prefix = pack["prefix"]
@@ -283,6 +371,7 @@ def cmd_site(args):
     print("Publicando instaladores y catálogo...")
     upload(ROOT / "install.sh", "install.sh", *UTF8_TEXT)
     upload(ROOT / "install.ps1", "install.ps1", *UTF8_TEXT)  # sin charset, `irm` rompe los acentos
+    upload(ROOT / "install-server.sh", "install-server.sh", *UTF8_TEXT)
     upload(ROOT / "catalog.json", "catalog.json")
     print("\nListo.")
 
@@ -291,7 +380,7 @@ def cmd_clean(args):
     catalog = load_catalog()
     if read_r2_json("catalog.json") != catalog:
         die("el catalog.json de R2 no es el del repo: corre primero `publish.py site`")
-    keep = {"catalog.json", "install.sh", "install.ps1"}
+    keep = {"catalog.json", "install.sh", "install.ps1", "install-server.sh"}
     keep |= {l["url"] for l in catalog["launcher"].values() if "://" not in l["url"]}
     for pack in catalog["modpacks"]:
         prefix = pack["prefix"]
@@ -302,6 +391,9 @@ def cmd_clean(args):
             profile = read_r2_json(f"{key}.json") or die(f"no se pudo leer {key}.json; no se borra nada")
             keep |= {f"{key}.json"} | {f"{prefix}/mods/{n}" for n in profile["include"]}
             keep |= {f"{key}.zip"} if "config" in profile else set()
+        server = read_r2_json(f"{prefix}/server/manifest.json")
+        if server:
+            keep |= {f"{prefix}/server/manifest.json", f"{prefix}/server/base.zip"} | {f"{prefix}/mods/{n}" for n in server["mods"]}
     print("Listando R2...")
     objects = json.loads(rclone("lsjson", BUCKET, "-R", "--files-only", capture=True))
     orphans = sorted((o for o in objects if o["Path"] not in keep), key=lambda o: o["Path"])
@@ -332,6 +424,11 @@ def main():
     p.add_argument("profile")
     p.add_argument("source")
     p.set_defaults(run=cmd_profile)
+    p = sub.add_parser("server", help="publica el server desde su repo git (mods derivados del standard del cliente)")
+    p.add_argument("pack")
+    p.add_argument("server")
+    p.add_argument("client")
+    p.set_defaults(run=cmd_server)
     sub.add_parser("site", help="publica install.sh, install.ps1 y catalog.json").set_defaults(run=cmd_site)
     sub.add_parser("clean", help="borra de R2 lo que ya nada referencia").set_defaults(run=cmd_clean)
     args = parser.parse_args()
