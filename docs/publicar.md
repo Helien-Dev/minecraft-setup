@@ -49,6 +49,9 @@ Otro remote o bucket: `R2_BUCKET=otro:bucket ./scripts/publish.py ...`.
 4. Muestra los mods nuevos, actualizados y quitados, y si cambió el base. Después de confirmar, sube solo esos
    jars, luego el base (si cambió) y el manifest al final.
 
+**Solo mods:** `./scripts/publish.py standard <modpack> <instancia> --mods-only` sube los jars y deja la base
+(configuración) que ya está publicada; en una instancia en git solo exige limpio `mods.lock`, no `config/`.
+
 > **Cambios en `config/`:** a quien ya tiene la instancia solo le llegan los archivos de config **nuevos**. Si cambias
 > uno que ya existía y el servidor lo necesita, avisa a los jugadores que borren ese archivo antes de volver a correr
 > el instalador (o muévelo a `kubejs/`/`defaultconfigs/` si el mod lo permite).

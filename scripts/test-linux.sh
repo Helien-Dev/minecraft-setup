@@ -5,7 +5,7 @@ set -euo pipefail
 WORK="$(mktemp -d)"
 ROOT="$WORK/repo"  # copia del repo: publish.py escribe profiles/ y no debe tocar el real
 mkdir -p "$ROOT/scripts"
-cp "$(dirname "$0")/../catalog.json" "$(dirname "$0")/../install.sh" "$(dirname "$0")/../install.ps1" "$ROOT/"
+cp "$(dirname "$0")/../catalog.json" "$(dirname "$0")/../install.sh" "$(dirname "$0")/../install.ps1" "$(dirname "$0")/../install-server.sh" "$ROOT/"
 cp "$(dirname "$0")/publish.py" "$ROOT/scripts/"
 python3 -c "import json, sys; c = json.load(open(sys.argv[1])); c['modpacks'] = [m for m in c['modpacks'] if m['id'] == 'neocozy']; json.dump(c, open(sys.argv[1], 'w'))" "$ROOT/catalog.json"
 PORT=8765
@@ -74,6 +74,13 @@ publish standard neocozy "$SRC"
 : > "$WORK/server.log"; install performance
 check 'grep -q "v = 1" "$INST/config/a.toml" && grep -q nuevo "$INST/config/b.toml" && grep -q k2 "$INST/kubejs/k.js" && grep -q jugador "$INST/options.txt" && grep -q mio "$INST/config/propio.toml"' "config existente intacta (ni la propia del jugador se borra); llegan config nueva y kubejs"
 check '[ $(grep -c "/mods/" "$WORK/server.log") -eq 1 ] && [ ! -e "$INST/mods/a.jar" ]' "solo bajó b.jar y borró a.jar"
+
+echo "== solo mods (--mods-only)"
+BASE_SHA=$(python3 -c "import json, sys; print(json.load(open(sys.argv[1]))['base']['sha256'])" "$R2_BUCKET/neocozy/manifest.json")
+echo "v = 3" > "$SRC/config/a.toml"; jar c2.jar
+publish standard neocozy "$SRC" --mods-only
+check 'grep -q "\"c2.jar\"" "$R2_BUCKET/neocozy/manifest.json" && grep -q "$BASE_SHA" "$R2_BUCKET/neocozy/manifest.json" && [ -e "$R2_BUCKET/neocozy/mods/c2.jar" ]' "sube el mod nuevo y conserva la base publicada"
+rm "$SRC/mods/c2.jar"; echo "v = 2" > "$SRC/config/a.toml"; publish standard neocozy "$SRC"
 
 echo "== estado de una versión anterior (sin base)"
 python3 -c "import json, sys; d = json.load(open(sys.argv[1])); del d['base']; json.dump(d, open(sys.argv[1], 'w'))" "$STATE"

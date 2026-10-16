@@ -105,11 +105,11 @@ def real_change(path, name):
     return any(not (l[1:].startswith("#") and l.rstrip()[-4:].isdigit()) for l in lines)
 
 
-def git_release(path):
+def git_release(path, only=()):
     # Una carpeta versionada en git solo se publica desde un tag limpio: lo publicado se reconstruye desde GitHub.
     if git(path, "rev-parse").returncode != 0:
         return None
-    dirty = [f for f in git(path, "diff", "HEAD", "--name-only").stdout.splitlines() if real_change(path, f)]
+    dirty = [f for f in git(path, "diff", "HEAD", "--name-only", "--", *only).stdout.splitlines() if real_change(path, f)]
     if dirty:
         die(f"{path} tiene cambios sin commit (publica solo desde un tag limpio):\n  " + "\n  ".join(dirty))
     tag = git(path, "describe", "--exact-match", "--tags", "HEAD")
@@ -209,7 +209,8 @@ def check_profiles(pack, mods):
 def cmd_standard(args):
     pack = load_pack(args.pack)
     prefix, instance = pack["prefix"], Path(args.instance).expanduser()
-    release = git_release(instance)
+    # --mods-only: solo se publican los jars, así que solo importa que mods.lock esté limpio.
+    release = git_release(instance, ("mods.lock",) if args.mods_only else ())
     print(f"Calculando hashes de {instance / 'mods'}...")
     mods = local_mods(instance / "mods")
     check_banned(pack, [instance / "mods" / n for n in mods])
@@ -222,12 +223,17 @@ def cmd_standard(args):
 
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp) / "base.zip"
-        print("Armando base.zip (todo menos mods/ y datos personales)...")
-        files = instance_files(instance)
-        base_meta = build_zip(files, base)
+        if args.mods_only:
+            # Se conserva la base publicada: los jugadores no vuelven a bajar ni aplicar la configuración.
+            base_meta = old.get("base") or die("--mods-only necesita una base ya publicada")
+            files = {}
+        else:
+            print("Armando base.zip (todo menos mods/ y datos personales)...")
+            files = instance_files(instance)
+            base_meta = build_zip(files, base)
         base_changed = old.get("base", {}).get("sha256") != base_meta["sha256"]
 
-        print(f"\n{pack['name']} (standard): {len(mods)} mods, base de {len(files)} archivos ({base_meta['size'] / 1e6:.1f} MB)")
+        print(f"\n{pack['name']} (standard): {len(mods)} mods, base {'publicada (sin cambios)' if args.mods_only else f'de {len(files)} archivos'} ({base_meta['size'] / 1e6:.1f} MB)")
         print_list("  Nuevos", added)
         print_list("  Actualizados", updated)
         print_list("  Quitados", removed)
@@ -430,6 +436,7 @@ def main():
     p = sub.add_parser("standard", help="publica el standard de un modpack desde una instancia local")
     p.add_argument("pack")
     p.add_argument("instance")
+    p.add_argument("--mods-only", action="store_true", help="publica solo los mods y conserva la base (configuración) ya publicada")
     p.set_defaults(run=cmd_standard)
     p = sub.add_parser("profile", help="publica un perfil derivado (instancia local o lista de mods que conserva)")
     p.add_argument("pack")

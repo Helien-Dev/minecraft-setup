@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-15
+
+- `publish.py standard --mods-only`: publica solo los mods y conserva la base ya publicada. `test-linux.sh` copia
+  `install-server.sh` (sin él, `publish site` fallaba en la prueba).
+
 ## 2026-10-04
 
 - **Brutally Cozy** en el catálogo (`brutally-cozy-atm`, solo standard). `publish.py` excluye `.git` y `.nl_password`
