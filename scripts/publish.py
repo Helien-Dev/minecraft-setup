@@ -322,7 +322,7 @@ def cmd_server(args):
     pack = load_pack(args.pack)
     prefix, server, client = pack["prefix"], Path(args.server).expanduser(), Path(args.client).expanduser()
     release = git_release(server) or die(f"{server} no está en git: la base del server son sus archivos versionados")
-    client_release = git_release(client)
+    client_release = git_release(client, ("mods.lock",))  # del cliente solo se usan los mods
     if client_release and client_release["tag"] != release["tag"]:
         die(f"el cliente está en {client_release['tag']} y el server en {release['tag']}: publica ambos desde la misma versión")
     standard = read_r2_json(f"{prefix}/manifest.json") or die(f"{prefix}/manifest.json no está en R2: publica primero el standard")
