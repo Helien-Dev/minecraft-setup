@@ -1,0 +1,109 @@
+{
+  "exclude": [
+    "BetterAdvancements-NeoForge-1.21.1-0.4.3.21.jar",
+    "EuphoriaPatcher-1.10.0-r5.9-neoforge.jar",
+    "ExtremeSoundMuffler-3.56_NeoForge-1.21.jar",
+    "JustEnoughResources-NeoForge-1.21.1-1.6.0.17.jar",
+    "Mod Menu (NeoForge Edition) 1.21.1-1.0.2.jar",
+    "NeoAuth-1.21.1-1.0.1.jar",
+    "ShoulderSurfing-NeoForge-1.21.1-5.2.0.jar",
+    "catchindicator-neoforge-2.1.1.jar",
+    "catchrate-display-neoforge-2.9.2.jar",
+    "colorfulhearts-neoforge-1.21.1-10.5.9.jar",
+    "colorwheel-neoforge-1.2.9+mc1.21.1.jar",
+    "colorwheel_patcher-neoforge-1.0.5+mc1.21.1.jar",
+    "darkmodeeverywhere-neoforge-1.21.1-1.4.0.jar",
+    "drippyloadingscreen_neoforge_3.1.5_MC_1.21.1.jar",
+    "dynamic-fps-3.11.4+minecraft-1.21.0-neoforge.jar",
+    "fancymenu_neoforge_3.9.12_MC_1.21.1.jar",
+    "fancytoasts-1.5.1-neoforge-1.21.1.jar",
+    "glint-outline-neoforge-2.2.0mc1.21.1.jar",
+    "gnetum-3.3.6.jar",
+    "iris-neoforge-1.8.14-beta.1+mc1.21.1.jar",
+    "justenoughbreeding-neoforge-1.21.1-3.2.1.jar",
+    "justzoom_neoforge_2.1.0_MC_1.21.1.jar",
+    "keybindbundles-1.4.0.jar",
+    "konkrete_neoforge_1.9.9_MC_1.21.jar",
+    "lambdynamiclights-4.8.11+1.21.1.jar",
+    "modelfix-1.21-1.10.jar",
+    "moreoverlays-1.24.2-mc1.21.1-neoforge.jar",
+    "punchy-2.8f-neoforge-1.21.1.jar",
+    "reeses-sodium-options-neoforge-2.2.4+mc1.21.1.jar",
+    "rrls-5.0.11+mc1.21.1-forge.jar",
+    "rsls-neoforge-1.1.17.jar",
+    "smithingtemplateviewer-1.0.4.jar",
+    "smoothchunk-1.21-4.1.jar",
+    "sodium-extra-neoforge-0.9.4+mc1.21.1.jar",
+    "sodium-neoforge-0.8.13+mc1.21.1.jar"
+  ],
+  "include": {
+    "CATM-AsyncCompat-1.0.4.jar": {
+      "sha256": "b7c8225ace1526d0b0c7b053b2e481b98aae08f360c7bb3592978fd9312e1c51",
+      "size": 7696
+    },
+    "CATM-CBM_AsyncCompat-1.0.0.jar": {
+      "sha256": "237519419f9a458888d3426931bfc773f3fb51451c237f1b68371e1ee6d1cf44",
+      "size": 4426
+    },
+    "CATM-Fixes-1.0.1.jar": {
+      "sha256": "ff042e6b78672708db9cbe3327f251cdaab423a72212ffe3cd07c0cd072a8b67",
+      "size": 6639
+    },
+    "CATM-Saves-1.0.0.jar": {
+      "sha256": "78d880db94f2706517e74c9ee054ba2c60358d334324c30067356ba99d872b92",
+      "size": 13055
+    },
+    "Chunky-NeoForge-1.4.23.jar": {
+      "sha256": "d72f235cf1f56f2c374f52c00bdda5034524b28142305a84cfc123a3f92ad274",
+      "size": 340572
+    },
+    "Ksyxis-1.4.5.jar": {
+      "sha256": "a08ca6d645e500d50edcffaefa5e3c182a86e8128f9f2981eca26f2a8f6e1d02",
+      "size": 23303
+    },
+    "RollingGate-neoforge-1.21.1-1.1.0+build.66.jar": {
+      "sha256": "6c93f8e234c34e0591cb2a74315a833af4e403366a017fb875c2570f1ef6a278",
+      "size": 367171
+    },
+    "SafePastures-1.1.1+1.21.1.jar": {
+      "sha256": "22ed91fb82b3f292edb3ffca4f854677447879552444a700fef92b9d0ad7eac1",
+      "size": 8154
+    },
+    "SiliconeDolls-neoforge-1.21.1-1.0.0+build.65.jar": {
+      "sha256": "18025736fe63051a041f8525ea0e9980eccf3f4b5fcc6eb9ff5822fe3737dc16",
+      "size": 333483
+    },
+    "alternate_current-mc1.21-1.9.0.jar": {
+      "sha256": "d23731fcb31cf561544fd7a97b0076b3abb42a0ece0631f86de9a1425fe046f5",
+      "size": 50425
+    },
+    "async-neoforge-0.2.0+alpha-1.21.1.jar": {
+      "sha256": "a6642af5a3fd83a377e085b7b23c0878ac25472ebcc8c8a885dd0202c63d8572",
+      "size": 339507
+    },
+    "c2me-neoforge-mc1.21.1-0.4.0-alpha.0.122.jar": {
+      "sha256": "672bd9a7dc3fae20817f3563e140d82be90845ef50ce26f57698082d4b2918c0",
+      "size": 3717245
+    },
+    "capturexp-neoforge-1.7.3-1.3.0.jar": {
+      "sha256": "6e35ad0a99a9b97bcdde090d2f6d90eb4f3e7aa7208286eb6088a457b57d308b",
+      "size": 22895
+    },
+    "noisium-neoforge-2.3.0+mc1.21-1.21.1.jar": {
+      "sha256": "e95209d593bc00d7c5de94f746ffd1dfbfa70ac8fbe938393ef930d00416109c",
+      "size": 60296
+    },
+    "servercore-neoforge-1.5.19+1.21.1.jar": {
+      "sha256": "a5706aa0bb3a47c5f1adab44306685736688ec03414f60beb4fcbe05b99f5a82",
+      "size": 1462674
+    },
+    "spawnnotification-neoforge-1.7.3-2.3.0.jar": {
+      "sha256": "4e16f38339287c2275c2e0b80f04c5e28e8c6c85d61920bd2d836159510f2675",
+      "size": 245009
+    },
+    "timcore-neoforge-1.7.3-1.32.0.jar": {
+      "sha256": "9c1440f95bac8ce1f0cd0a75d593e167d36fb190b00015ae0200f28bab5bedf8",
+      "size": 306328
+    }
+  }
+}
