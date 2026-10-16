@@ -2,6 +2,9 @@
 
 ## 2026-10-15
 
+- `publish.py release <modpack> <cliente> <server> [--base]`: publica el standard y el server en un solo comando, con
+  una sola confirmación. `publish.py server` solo exige limpio el `mods.lock` del cliente.
+
 - `publish.py standard --mods-only`: publica solo los mods y conserva la base ya publicada. `test-linux.sh` copia
   `install-server.sh` (sin él, `publish site` fallaba en la prueba).
 

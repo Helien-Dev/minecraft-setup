@@ -102,6 +102,13 @@ for v in 1 2; do python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1], '
 check '! publish standard neocozy "$SRC" && grep -q "repetidos" "$WORK/publish.log"' "publish se niega con dos versiones del mismo mod"
 rm "$SRC/mods/libx-"*.jar
 
+echo "== release: standard y server con una sola confirmación"
+SRV="$WORK/server"; mkdir -p "$SRV/mods"; cp "$SRC/mods/"*.jar "$SRV/mods/"; echo "motd=x" > "$SRV/server.properties"
+git -C "$SRV" init -q && git -C "$SRV" add -A && git -C "$SRV" -c user.name=t -c user.email=t@t commit -qm v && git -C "$SRV" tag v1.0.0
+jar d.jar; cp "$SRC/mods/d.jar" "$SRV/mods/" && git -C "$SRV" add -A && git -C "$SRV" -c user.name=t -c user.email=t@t commit -qm v2 && git -C "$SRV" tag v1.0.1
+publish release neocozy "$SRC" "$SRV"
+check 'grep -q "\"d.jar\"" "$R2_BUCKET/neocozy/manifest.json" && grep -q "v1.0.1" "$R2_BUCKET/neocozy/server/manifest.json"' "publica el standard y el server respondiendo una sola vez"
+
 echo "== limpieza"
 publish clean; check '[ ! -e "$R2_BUCKET/neocozy/mods/a.jar" ] && [ -e "$R2_BUCKET/neocozy/mods/b.jar" ] && [ -e "$R2_BUCKET/neocozy/profiles/performance.zip" ]' "borró a.jar huérfano y conservó el resto"
 

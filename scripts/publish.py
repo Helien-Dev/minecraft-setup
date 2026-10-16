@@ -37,9 +37,17 @@ def die(msg):
     sys.exit(f"[ERROR] {msg}")
 
 
+RELEASE = False
+confirmed = False  # release: con un "sí" se publica el cliente y luego el server sin volver a preguntar
+
+
 def confirm(question="¿Publicar?"):
+    global confirmed
+    if confirmed:
+        return
     if input(f"\n{question} [s/N] ").strip().lower() not in ("s", "si", "sí", "y"):
         sys.exit("Cancelado, no se cambió nada en R2.")
+    confirmed = RELEASE
 
 
 def rclone(*args, capture=False):
@@ -317,6 +325,14 @@ def cmd_profile(args):
     print(f"\nListo. {path.relative_to(ROOT)} actualizado: haz commit.")
 
 
+def cmd_release(args):
+    # Un solo comando por versión: el standard (solo mods, salvo --base) y después el server, desde el mismo tag.
+    global RELEASE
+    RELEASE = True
+    cmd_standard(argparse.Namespace(pack=args.pack, instance=args.client, mods_only=not args.base))
+    cmd_server(args)
+
+
 def cmd_server(args):
     # Mods: el standard menos exclude más include (una sola fuente, mismas versiones). Base: los archivos versionados del server.
     pack = load_pack(args.pack)
@@ -448,6 +464,12 @@ def main():
     p.add_argument("server")
     p.add_argument("client")
     p.set_defaults(run=cmd_server)
+    p = sub.add_parser("release", help="publica una versión completa: standard (solo mods) y server, con una sola confirmación")
+    p.add_argument("pack")
+    p.add_argument("client")
+    p.add_argument("server")
+    p.add_argument("--base", action="store_true", help="publica también la base (configuración) del cliente")
+    p.set_defaults(run=cmd_release)
     sub.add_parser("site", help="publica install.sh, install.ps1 y catalog.json").set_defaults(run=cmd_site)
     sub.add_parser("clean", help="borra de R2 lo que ya nada referencia").set_defaults(run=cmd_clean)
     args = parser.parse_args()

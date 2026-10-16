@@ -12,6 +12,14 @@ deriva de la del cliente: es su propia base, formada por los archivos versionado
 
 ## Publicar
 
+Una versión completa, con un solo comando y una sola confirmación (standard solo mods, salvo `--base`, y luego el server):
+
+```bash
+./scripts/publish.py release <modpack> <instancia-cliente> <repo-server> [--base]
+```
+
+Por partes:
+
 ```bash
 ./scripts/publish.py standard <modpack> <instancia-cliente>              # primero el cliente
 ./scripts/publish.py server   <modpack> <repo-server> <instancia-cliente>
