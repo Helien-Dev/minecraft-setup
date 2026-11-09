@@ -1,5 +1,6 @@
 {
   "exclude": [
+    "DistantHorizons-3.3.3-1.21.1-fabric-neoforge.jar",
     "EuphoriaPatcher-1.10.0-r5.9-neoforge.jar",
     "JustEnoughResources-NeoForge-1.21.1-1.6.0.17.jar",
     "ShoulderSurfing-NeoForge-1.21.1-5.2.0.jar",
@@ -1279,11 +1280,10 @@
     "shaderpacks/ComplementaryUnbound_r5.9 + EuphoriaPatches_1.10.0/shaders/world1/voxy_opaque.glsl",
     "shaderpacks/ComplementaryUnbound_r5.9 + EuphoriaPatches_1.10.0/shaders/world1/voxy_translucent.glsl",
     "shaderpacks/ComplementaryUnbound_r5.9.zip",
-    "shaderpacks/MakeUp-UltraFast-9.5e.zip",
-    "shooting_star.log"
+    "shaderpacks/MakeUp-UltraFast-9.5e.zip"
   ],
   "config": {
-    "sha256": "078f2b0a94e6e05a1a2561e1ee2a13802201b2f9fa439217bb0a1b2d32466c6b",
-    "size": 25695
+    "sha256": "61ce83021fc2f7a4b24795cdde91c9d125dd47c7cf2328b8c061cee0b18f49bc",
+    "size": 14157
   }
 }
