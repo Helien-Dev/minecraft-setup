@@ -5,7 +5,6 @@
     "ExtremeSoundMuffler-3.56_NeoForge-1.21.jar",
     "JustEnoughResources-NeoForge-1.21.1-1.6.0.17.jar",
     "Mod Menu (NeoForge Edition) 1.21.1-1.0.2.jar",
-    "NeoAuth-1.21.1-1.0.1.jar",
     "ShoulderSurfing-NeoForge-1.21.1-5.2.0.jar",
     "catchindicator-neoforge-2.1.1.jar",
     "catchrate-display-neoforge-2.9.2.jar",
@@ -37,17 +36,25 @@
     "sodium-neoforge-0.8.13+mc1.21.1.jar"
   ],
   "include": {
-    "CATM-AsyncCompat-1.0.4.jar": {
-      "sha256": "b7c8225ace1526d0b0c7b053b2e481b98aae08f360c7bb3592978fd9312e1c51",
-      "size": 7696
+    "CATM-AsyncCompat-1.0.6.jar": {
+      "sha256": "70c99b691c20e42656de956d9ea4e42e7e1a36d0a86ffc8aac1248cabe44c241",
+      "size": 9823
     },
     "CATM-CBM_AsyncCompat-1.0.0.jar": {
       "sha256": "237519419f9a458888d3426931bfc773f3fb51451c237f1b68371e1ee6d1cf44",
       "size": 4426
     },
-    "CATM-Fixes-1.0.1.jar": {
-      "sha256": "ff042e6b78672708db9cbe3327f251cdaab423a72212ffe3cd07c0cd072a8b67",
-      "size": 6639
+    "CATM-CBM_MoveFX-1.2.0.jar": {
+      "sha256": "4e99bf1b0e5528eb0fd9371c42c5a41d48c96b0ffe573cfeb73f5c80f278c326",
+      "size": 5223
+    },
+    "CATM-CBM_WildSpawns-1.0.0.jar": {
+      "sha256": "8002e5175105779ef406d67ef7eb449c7cd4ac378e8e9338a43601a419ce407c",
+      "size": 4553
+    },
+    "CATM-Fixes-1.1.0.jar": {
+      "sha256": "a4ff033600e8b9d58804dc02d7faee55d79ba30ee405280417f31b9ff58abae6",
+      "size": 8184
     },
     "CATM-Saves-1.0.0.jar": {
       "sha256": "78d880db94f2706517e74c9ee054ba2c60358d334324c30067356ba99d872b92",
@@ -96,10 +103,6 @@
     "servercore-neoforge-1.5.19+1.21.1.jar": {
       "sha256": "a5706aa0bb3a47c5f1adab44306685736688ec03414f60beb4fcbe05b99f5a82",
       "size": 1462674
-    },
-    "spawnnotification-neoforge-1.7.3-2.3.0.jar": {
-      "sha256": "4e16f38339287c2275c2e0b80f04c5e28e8c6c85d61920bd2d836159510f2675",
-      "size": 245009
     },
     "timcore-neoforge-1.7.3-1.32.0.jar": {
       "sha256": "9c1440f95bac8ce1f0cd0a75d593e167d36fb190b00015ae0200f28bab5bedf8",
