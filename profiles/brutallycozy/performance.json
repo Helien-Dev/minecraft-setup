@@ -1,8 +1,19 @@
 {
   "exclude": [
+    "EuphoriaPatcher-1.10.0-r5.9-neoforge.jar",
+    "JustEnoughResources-NeoForge-1.21.1-1.6.0.17.jar",
+    "ShoulderSurfing-NeoForge-1.21.1-5.2.0.jar",
+    "colorfulhearts-neoforge-1.21.1-10.5.9.jar",
     "colorwheel-neoforge-1.2.9+mc1.21.1.jar",
     "colorwheel_patcher-neoforge-1.0.5+mc1.21.1.jar",
-    "iris-neoforge-1.8.14-beta.1+mc1.21.1.jar"
+    "darkmodeeverywhere-neoforge-1.21.1-1.4.0.jar",
+    "drippyloadingscreen_neoforge_3.1.5_MC_1.21.1.jar",
+    "fancytoasts-1.5.1-neoforge-1.21.1.jar",
+    "glint-outline-neoforge-2.2.0mc1.21.1.jar",
+    "iris-neoforge-1.8.14-beta.1+mc1.21.1.jar",
+    "lambdynamiclights-4.8.11+1.21.1.jar",
+    "punchy-2.8f-neoforge-1.21.1.jar",
+    "smoothchunk-1.21-4.1.jar"
   ],
   "include": {},
   "skip": [
@@ -1268,7 +1279,8 @@
     "shaderpacks/ComplementaryUnbound_r5.9 + EuphoriaPatches_1.10.0/shaders/world1/voxy_opaque.glsl",
     "shaderpacks/ComplementaryUnbound_r5.9 + EuphoriaPatches_1.10.0/shaders/world1/voxy_translucent.glsl",
     "shaderpacks/ComplementaryUnbound_r5.9.zip",
-    "shaderpacks/MakeUp-UltraFast-9.5e.zip"
+    "shaderpacks/MakeUp-UltraFast-9.5e.zip",
+    "shooting_star.log"
   ],
   "config": {
     "sha256": "61ce83021fc2f7a4b24795cdde91c9d125dd47c7cf2328b8c061cee0b18f49bc",
