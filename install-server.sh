@@ -45,7 +45,8 @@ url = urljoin(catalog_url, pack["prefix"] + "/")
 
 
 def fetch(key, dest, sha=None):
-    with urllib.request.urlopen(url + key, timeout=120) as r, open(dest, "wb") as f:
+    # Con sha, va en la URL: Cloudflare cachea los .zip (4 h) y una URL reutilizada daría el anterior.
+    with urllib.request.urlopen(url + key + (f"?v={sha}" if sha else ""), timeout=120) as r, open(dest, "wb") as f:
         shutil.copyfileobj(r, f, 1 << 20)
     if sha and sha256(dest) != sha:
         os.remove(dest)

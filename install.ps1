@@ -171,8 +171,10 @@ try {
   }
 
   function Get-Verified($rel, $meta) {
-    $f = Join-Path $DlDir (Split-Path -Leaf $rel)
-    Get-Remote ($PackUrl + $rel) $f -Big
+    # El sha en la URL y en el nombre: Cloudflare cachea los .zip (4 h) y una URL reutilizada daría el zip anterior;
+    # el .part reanudado (-C -) tampoco puede mezclar bytes de dos versiones.
+    $f = Join-Path $DlDir ($meta.sha256.Substring(0, 16) + '-' + (Split-Path -Leaf $rel))
+    Get-Remote ($PackUrl + $rel + '?v=' + $meta.sha256) $f -Big
     if ((Get-Sha256 $f) -ne $meta.sha256) { Remove-Item -LiteralPath $f -Force; throw 'La configuración se descargó dañada. Vuelve a ejecutar el script.' }
     $f
   }

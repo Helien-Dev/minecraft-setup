@@ -168,7 +168,8 @@ def get_json(url):
 
 
 def fetch_verified(url, meta, dest):
-    download(url, dest)
+    # El sha en la URL: Cloudflare cachea los .zip (4 h) y una URL reutilizada daría el zip anterior.
+    download(url + "?v=" + meta["sha256"], dest)
     if sha256(dest) != meta["sha256"]:
         sys.exit(f"{url} se descargó dañado.")
     return dest
