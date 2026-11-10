@@ -36,9 +36,9 @@
     "sodium-neoforge-0.8.13+mc1.21.1.jar"
   ],
   "include": {
-    "CATM-AsyncCompat-1.0.6.jar": {
-      "sha256": "70c99b691c20e42656de956d9ea4e42e7e1a36d0a86ffc8aac1248cabe44c241",
-      "size": 9823
+    "CATM-AsyncCompat-1.0.7.jar": {
+      "sha256": "e5e6eeaddb81f5d834426907f9a8526f00d2b1830994f5b202d81b6037362e61",
+      "size": 14014
     },
     "CATM-CBM_AsyncCompat-1.0.0.jar": {
       "sha256": "237519419f9a458888d3426931bfc773f3fb51451c237f1b68371e1ee6d1cf44",
@@ -52,9 +52,9 @@
       "sha256": "8002e5175105779ef406d67ef7eb449c7cd4ac378e8e9338a43601a419ce407c",
       "size": 4553
     },
-    "CATM-Fixes-1.1.0.jar": {
-      "sha256": "a4ff033600e8b9d58804dc02d7faee55d79ba30ee405280417f31b9ff58abae6",
-      "size": 8184
+    "CATM-Fixes-1.2.0.jar": {
+      "sha256": "cf2c0209a11cf6c40ed17cdd37563f54014f44b487e151c6050e5e1757552551",
+      "size": 8919
     },
     "CATM-Saves-1.0.0.jar": {
       "sha256": "78d880db94f2706517e74c9ee054ba2c60358d334324c30067356ba99d872b92",
